@@ -1,0 +1,108 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/* ── Colors ─────────────────────────────────────────────── */
+:root {
+  --bg-page: #0a0b0d;
+  --bg-card: #1a1d22;
+  --bg-input: #14161a;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text: #e8eaed;
+  --text-dim: rgba(232, 234, 237, 0.55);
+  --text-mute: rgba(232, 234, 237, 0.35);
+  --green: #8baf34;
+  --amber: #e5a73c;
+  --red: #e05555;
+  --blue: #5b9bd5;
+}
+
+/* ── Base ───────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body, #app {
+  margin: 0; padding: 0;
+  height: 100%; width: 100%;
+  overflow: hidden;
+  background: var(--bg-page);
+  color: var(--text);
+  font-family: "Inter Variable", system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* ── Typography ─────────────────────────────────────────── */
+.t-title  { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); }
+.t-mute   { font-size: 12px; color: var(--text-mute); }
+.t-mono   { font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace; font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; height: 36px; padding: 0 14px;
+  border-radius: 8px; border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.03); color: var(--text-dim);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  white-space: nowrap; user-select: none;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.btn:hover:not(:disabled) { background: rgba(255,255,255,0.07); color: var(--text); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-sm { height: 30px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+
+.btn-primary { background: rgba(139,175,52,0.12); border-color: rgba(139,175,52,0.28); color: var(--green); }
+.btn-primary:hover:not(:disabled) { background: rgba(139,175,52,0.2); border-color: rgba(139,175,52,0.45); }
+
+.btn-danger  { background: rgba(224,85,85,0.12); border-color: rgba(224,85,85,0.28); color: var(--red); }
+.btn-danger:hover:not(:disabled) { background: rgba(224,85,85,0.2); border-color: rgba(224,85,85,0.45); }
+
+.btn-warn    { background: rgba(229,167,60,0.12); border-color: rgba(229,167,60,0.28); color: var(--amber); }
+.btn-warn:hover:not(:disabled) { background: rgba(229,167,60,0.2); border-color: rgba(229,167,60,0.45); }
+
+.btn-ghost   { background: transparent; border-color: transparent; color: var(--text-mute); }
+.btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.04); color: var(--text-dim); }
+
+/* ── Input ──────────────────────────────────────────────── */
+.input {
+  height: 36px; padding: 0 12px;
+  background: var(--bg-input); border: 1px solid var(--border-strong);
+  border-radius: 8px; color: var(--text); font-size: 13px;
+  font-family: inherit; width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input:focus {
+  border-color: rgba(139,175,52,0.5);
+  box-shadow: 0 0 0 3px rgba(139,175,52,0.12);
+  outline: none;
+}
+.input::placeholder { color: rgba(255,255,255,0.2); }
+
+/* ── Progress ───────────────────────────────────────────── */
+.progress {
+  appearance: none; -webkit-appearance: none;
+  width: 100%; height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 99px; overflow: hidden; display: block;
+}
+.progress::-webkit-progress-bar { background: rgba(255,255,255,0.06); }
+.progress::-webkit-progress-value { background: linear-gradient(90deg, #6d9129, #8baf34); border-radius: 99px; transition: width 0.3s ease; }
+.progress::-moz-progress-bar { background: linear-gradient(90deg, #6d9129, #8baf34); border-radius: 99px; }
+
+/* ── Status dot ─────────────────────────────────────────── */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.dot-pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
