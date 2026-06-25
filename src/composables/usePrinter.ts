@@ -82,6 +82,11 @@ export function usePrinter() {
     if (active) { stopPolling() } else { startPolling() }
   })
 
+  // On print start, do a one-shot poll to grab filename and layers
+  watch(() => store.state, (s) => {
+    if (s === 'printing' || s === 'preparing') pollStatus()
+  })
+
   // Fetch thumbnail from G-code header when filename changes
   watch(() => store.printFilename, (filename) => {
     if (filename) fetchThumbnail(filename)

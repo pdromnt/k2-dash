@@ -184,8 +184,8 @@ export function usePrinterWs() {
 
     // Fans
     const mfp = n(msg.modelFanPct); if (mfp !== undefined) store.fanPart = mfp / 100
-    const afp = n(msg.auxiliaryFanPct); if (afp !== undefined) store.fanAux = afp / 100
-    const cfp = n(msg.caseFanPct); if (cfp !== undefined) store.fanChamber = cfp / 100
+    const cfp = n(msg.auxiliaryFanPct); if (cfp !== undefined) store.fanChamber = cfp / 100
+    const afp = n(msg.caseFanPct); if (afp !== undefined) store.fanAux = afp / 100
 
     // LED
     const ls = n(msg.lightSw)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { usePrinterStore } from '@/stores/printer'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
@@ -11,6 +11,12 @@ const banner = useBannerStore()
 const toast = useToastStore()
 
 const jog = ref(10)
+
+const fanSliders = ref([printer.fanPart, printer.fanAux, printer.fanChamber])
+
+watch(() => [printer.fanPart, printer.fanAux, printer.fanChamber], ([p, a, c]) => {
+  fanSliders.value = [p, a, c]
+})
 
 async function cmd(script: string, label?: string) {
   if (!import.meta.env.VITE_PRINTER_HOST) return
@@ -24,12 +30,25 @@ async function cmd(script: string, label?: string) {
 
 async function setTemp(heater: string, temp: string) {
   const t = parseFloat(temp)
-  if (!isNaN(t)) await cmd(`SET_HEATER_TEMPERATURE HEATER=${heater} TARGET=${t}`)
+  if (isNaN(t)) return
+
+  // Chamber uses Creality WS direct command (not Klipper G-code)
+  if (heater === 'heater_generic chamber_heater') {
+    const sock = window.__printerWs
+    if (sock?.readyState === WebSocket.OPEN) {
+      sock.send(JSON.stringify({ method: 'set', params: { boxTempControl: t } }))
+      toast.show(`Chamber target \u00b7 ${t}\u00b0C`)
+    } else {
+      banner.show('Printer WebSocket not connected')
+    }
+    return
+  }
+
+  await cmd(`SET_HEATER_TEMPERATURE HEATER="${heater}" TARGET=${t}`)
 }
 
 async function setFan(pin: number, pct: number) {
-  const pwm = Math.round(pct * 2.55)
-  await cmd(`M106 P${pin} S${pwm}`)
+  await cmd(`M106 P${pin} S${Math.round(pct * 2.55)}`, `Fan \u00b7 ${Math.round(pct)}%`)
 }
 
 async function toggleLed() {
@@ -175,24 +194,24 @@ const quickCmds = [
       <div>
         <div class="t-title mb-5">Fans</div>
         <div class="space-y-4">
-          <div v-for="f in [
-            { label: 'Part', pin: 1, speed: printer.fanPart },
-            { label: 'Aux', pin: 2, speed: printer.fanAux },
-            { label: 'Chamber', pin: 3, speed: printer.fanChamber },
-          ]" :key="f.pin">
+          <div v-for="(f, i) in [
+            { label: 'Part' },
+            { label: 'Case' },
+            { label: 'Side' },
+          ]" :key="i">
             <div class="flex items-baseline justify-between mb-2">
               <span class="t-title">{{ f.label }}</span>
-              <span class="t-mono text-[13px]">{{ fanLabel(f.speed) }}</span>
+              <span class="t-mono text-[13px]">{{ fanLabel(fanSliders[i]) }}</span>
             </div>
             <input
               type="range"
               min="0" max="1" step="0.05"
-              :value="f.speed"
+              v-model="fanSliders[i]"
               class="w-full h-1.5 rounded-full appearance-none bg-white/[0.08] cursor-pointer"
               :style="{
-                '--tw-accent': `linear-gradient(90deg, var(--green), var(--green) ${f.speed * 100}%, rgba(255,255,255,0.06) ${f.speed * 100}%)`,
+                '--tw-accent': `linear-gradient(90deg, var(--green), var(--green) ${fanSliders[i] * 100}%, rgba(255,255,255,0.06) ${fanSliders[i] * 100}%)`,
               }"
-              @change="setFan(f.pin, ($event.target as HTMLInputElement).valueAsNumber)"
+              @change="setFan(i, fanSliders[i] * 100)"
             />
           </div>
         </div>
