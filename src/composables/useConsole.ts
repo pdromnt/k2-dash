@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch } from 'vue'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
 import { usePrinterWs } from '@/composables/usePrinterWs'
@@ -14,6 +14,7 @@ interface ConsoleMessage {
 
 const MAX_MESSAGES = 500
 const TRIM_TO = 300
+const READY_TEXT = 'Console Status: Ready.'
 
 export function useConsole() {
   const banner = useBannerStore()
@@ -34,11 +35,6 @@ export function useConsole() {
   function connect() {
     if (unsubscribe) return // already connected
 
-    if (window.__printerWs?.readyState === WebSocket.OPEN) {
-      connected.value = true
-      addMessage('system', 'Console Status: Ready.')
-    }
-
     // Subscribe through the WS composable's pub/sub so we don't open a
     // second message listener on the same socket.
     unsubscribe = printerWs.onMessage((msg) => {
@@ -55,6 +51,19 @@ export function useConsole() {
     if (unsubscribe) { unsubscribe(); unsubscribe = null }
     connected.value = false
   }
+
+  // Mirror the WS connection state. The socket is opened by usePrinterWs in
+  // AppLayout's onMounted, so by the time the console mounts it may not yet
+  // be OPEN — we can't just snapshot readyState once. Watch and react.
+  watch(printerWs.connected, (isConnected, wasConnected) => {
+    connected.value = isConnected
+    if (isConnected && !wasConnected) {
+      // Only announce on the rising edge, and only once per connection.
+      if (!messages.value.some((m) => m.text === READY_TEXT)) {
+        addMessage('system', READY_TEXT)
+      }
+    }
+  }, { immediate: true })
 
   async function sendCommand(cmd: string) {
     const command = cmd.trim()
