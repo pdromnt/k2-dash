@@ -73,7 +73,14 @@ onMounted(load)
   <div class="card-panel h-full">
     <div class="flex items-center justify-between">
       <div class="t-title">Files</div>
-      <span v-if="!loading && files.length > 0" class="t-mute font-mono">{{ files.length }} files</span>
+      <div class="flex items-center gap-3">
+        <span v-if="!loading && files.length > 0" class="t-mute font-mono">{{ files.length }} files</span>
+        <button class="btn btn-ghost btn-sm" @click="load" :disabled="loading" aria-label="Reload files">
+          <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Upload zone -->
