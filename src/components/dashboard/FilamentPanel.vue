@@ -1,12 +1,25 @@
 <script setup lang="ts">
 import { usePrinterStore } from '@/stores/printer'
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUpdated, useTemplateRef } from 'vue'
 
 const printer = usePrinterStore()
 
 const hasSlots = computed(() => printer.cfsSlots.length > 0)
 
 const loadedCount = computed(() => printer.cfsSlots.filter(s => s.type).length)
+
+const scrollEl = useTemplateRef<HTMLElement>('scrollEl')
+const canScrollRight = ref(false)
+
+function updateScroll() {
+  const el = scrollEl.value
+  if (!el) return
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+onMounted(updateScroll)
+// cfsSlots is populated asynchronously by the WS; re-check once they arrive.
+onUpdated(updateScroll)
 
 function slotColor(s: (typeof printer.cfsSlots)[number]): string {
   const c = s.color
@@ -48,37 +61,48 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
       </div>
     </div>
 
-    <div v-if="hasSlots" class="grid gap-3 -mx-7 lg:-mx-8 px-7 lg:px-8 max-sm:pb-3 overflow-x-auto"
-      :style="{ gridTemplateColumns: `repeat(${Math.min(printer.cfsSlots.length, 5)}, minmax(120px, 1fr))` }">
+    <div v-if="hasSlots" class="relative">
       <div
-        v-for="s in printer.cfsSlots"
-        :key="`${s.boxId}-${s.materialId}`"
-        class="flex flex-col items-center gap-2.5 p-4 rounded-xl border"
-        :class="s.type ? 'border-[var(--border-strong)] bg-[var(--bg-input)]' : 'border-dashed border-[var(--border)] bg-transparent'"
+        ref="scrollEl"
+        class="grid gap-3 -mx-7 lg:-mx-8 px-7 lg:px-8 max-sm:pb-3 overflow-x-auto"
+        :style="{ gridTemplateColumns: `repeat(${Math.min(printer.cfsSlots.length, 5)}, minmax(120px, 1fr))` }"
+        @scroll="updateScroll"
       >
         <div
-          class="w-12 h-12 rounded-full border-2 shrink-0"
-          :class="s.type ? 'border-[var(--border-strong)]' : 'border-[var(--border)]'"
-          :style="{ backgroundColor: slotColor(s) }"
-        ></div>
+          v-for="s in printer.cfsSlots"
+          :key="`${s.boxId}-${s.materialId}`"
+          class="flex flex-col items-center gap-2.5 p-4 rounded-xl border"
+          :class="s.type ? 'border-[var(--border-strong)] bg-[var(--bg-input)]' : 'border-dashed border-[var(--border)] bg-transparent'"
+        >
+          <div
+            class="w-12 h-12 rounded-full border-2 shrink-0"
+            :class="s.type ? 'border-[var(--border-strong)]' : 'border-[var(--border)]'"
+            :style="{ backgroundColor: slotColor(s) }"
+          ></div>
 
-        <span class="text-[11px] font-semibold text-center leading-tight" :class="s.type ? 'text-[var(--text-dim)]' : 'text-[var(--text-mute)]'">
-          {{ s.isSpool ? 'Spool' : `CFS ${s.boxId}-${s.materialId + 1}` }}
-        </span>
+          <span class="text-[11px] font-semibold text-center leading-tight" :class="s.type ? 'text-[var(--text-dim)]' : 'text-[var(--text-mute)]'">
+            {{ s.isSpool ? 'Spool' : `CFS ${s.boxId}-${s.materialId + 1}` }}
+          </span>
 
-        <span v-if="s.type" class="text-[10px] font-semibold text-[var(--green)] uppercase tracking-wider">
-          {{ s.type }}
-        </span>
-        <span v-else class="text-[10px] text-[var(--text-mute)] uppercase tracking-wider">Empty</span>
+          <span v-if="s.type" class="text-[10px] font-semibold text-[var(--green)] uppercase tracking-wider">
+            {{ s.type }}
+          </span>
+          <span v-else class="text-[10px] text-[var(--text-mute)] uppercase tracking-wider">Empty</span>
 
-        <span v-if="s.vendor" class="text-[10px] text-[var(--text-mute)]">
-          {{ s.vendor }}
-        </span>
+          <span v-if="s.vendor" class="text-[10px] text-[var(--text-mute)]">
+            {{ s.vendor }}
+          </span>
 
-        <span v-if="s.minTemp > 0" class="text-[10px] font-mono text-[var(--text-mute)]">
-          {{ s.minTemp }}–{{ s.maxTemp }}°C
-        </span>
+          <span v-if="s.minTemp > 0" class="text-[10px] font-mono text-[var(--text-mute)]">
+            {{ s.minTemp }}–{{ s.maxTemp }}°C
+          </span>
+        </div>
       </div>
+      <div
+        class="max-sm:scroll-fade-right"
+        :class="{ 'is-faded': !canScrollRight }"
+        aria-hidden="true"
+      ></div>
     </div>
 
     <div v-else class="py-6 text-center text-[var(--text-mute)] text-[13px]">
