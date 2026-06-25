@@ -94,10 +94,17 @@ export async function getConfigFile(filePath: string): Promise<string> {
 }
 
 export async function saveConfigFile(filePath: string, content: string): Promise<void> {
+  // Moonraker expects the file part to carry only the filename and the
+  // `path` field to carry the subdirectory relative to the root. Sending
+  // the full path in both confuses the server and returns a 500.
+  const lastSlash = filePath.lastIndexOf('/')
+  const dir = lastSlash >= 0 ? filePath.slice(0, lastSlash) : ''
+  const filename = lastSlash >= 0 ? filePath.slice(lastSlash + 1) : filePath
+
   const form = new FormData()
-  form.append('file', new Blob([content], { type: 'text/plain' }), filePath)
+  form.append('file', new Blob([content], { type: 'text/plain' }), filename)
   form.append('root', 'config')
-  form.append('path', filePath)
+  if (dir) form.append('path', dir)
   await api.upload('/server/files/upload', form, 15000)
 }
 
