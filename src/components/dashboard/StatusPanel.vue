@@ -66,7 +66,7 @@ const heaters = computed(() => [
       </span>
     </div>
 
-    <div class="flex-1 flex flex-col justify-center gap-5 max-sm:gap-4 lg:gap-8">
+    <div class="flex-1 flex flex-col justify-center gap-4 max-sm:gap-4 lg:gap-5">
 
     <!-- Temperatures: responsive grid -->
     <div class="stats-grid">

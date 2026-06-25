@@ -160,7 +160,9 @@ html, body, #app {
 .stat-cell { padding: 0 1.75rem; }
 @media (min-width: 640px) { .stat-cell { padding: 0 2rem; } }
 @media (max-width: 639px) {
-  .stat-cell { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  /* Less bottom padding on mobile — the last cell in a row would otherwise
+     stack its bottom padding on top of the parent flex gap. */
+  .stat-cell { padding-top: .75rem; padding-bottom: .25rem; }
 }
 
 /* ── Range slider (Controls panel) ─────────────────────── */
