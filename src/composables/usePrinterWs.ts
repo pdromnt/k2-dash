@@ -172,11 +172,7 @@ export function usePrinterWs() {
     if (typeof msg.printFileName === 'string') store.printFilename = msg.printFileName
     const pjt = n(msg.printJobTime); if (pjt !== undefined) store.printDuration = pjt
     const plt = n(msg.printLeftTime); if (plt !== undefined) store.printLeftTime = plt
-    const l = n(msg.layer)
-    if (l !== undefined) {
-      store.currentLayer = Math.round(l / LAYER_DIVIDER)
-      if (import.meta.env.DEV) console.log('[WS layer]', l, '->', store.currentLayer, '/', n(msg.TotalLayer))
-    }
+    const l = n(msg.layer); if (l !== undefined) store.currentLayer = Math.round(l / LAYER_DIVIDER)
     const tl = n(msg.TotalLayer); if (tl !== undefined) store.totalLayers = tl
     const fu = n(msg.usedMaterialLength); if (fu !== undefined) store.filamentUsed = fu
 
