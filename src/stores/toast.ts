@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 export type ToastKind = 'success' | 'info' | 'error'
 
-export interface Toast {
+interface Toast {
   id: number
   kind: ToastKind
   message: string
@@ -31,13 +31,14 @@ export const useToastStore = defineStore('toast', () => {
    *  - Persistent: stays until clicked. Multiple can stack.
    *  - kind defaults to 'success'; pass 'info' for warnings/notices, 'error' for failures.
    */
-  function show(message: string, options: { persistent?: boolean; kind?: ToastKind } = {}) {
+  function show(message: string, options: { persistent?: boolean; kind?: ToastKind } = {}): number {
     const persistent = options.persistent ?? false
     const kind = options.kind ?? 'success'
 
     if (persistent) {
-      toasts.value.push({ id: nextId++, kind, message, persistent })
-      return
+      const id = nextId++
+      toasts.value.push({ id, kind, message, persistent })
+      return id
     }
 
     clearAutoDismiss()
@@ -50,16 +51,13 @@ export const useToastStore = defineStore('toast', () => {
       toasts.value = toasts.value.filter(t => t.id !== id)
       autoDismissTimer = null
     }, AUTO_DISMISS_MS)
+
+    return id
   }
 
   function dismiss(id: number) {
     toasts.value = toasts.value.filter(t => t.id !== id)
   }
 
-  function clear() {
-    clearAutoDismiss()
-    toasts.value = []
-  }
-
-  return { toasts, show, dismiss, clear }
+  return { toasts, show, dismiss }
 })

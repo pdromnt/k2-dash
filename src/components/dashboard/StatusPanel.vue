@@ -1,22 +1,12 @@
 <script setup lang="ts">
 import { usePrinterStore } from '@/stores/printer'
 import { usePrinter } from '@/composables/usePrinter'
-import { useBannerStore } from '@/stores/banner'
-import { computed, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { fmtDur, splitPath } from '@/utils/format'
 
 const printer = usePrinterStore()
-const { error } = usePrinter()
-const banner = useBannerStore()
+usePrinter() // starts HTTP polling
 
-watch(error, (msg) => {
-  if (msg) banner.show('Failed to fetch status', msg)
-})
-
-const fmtDur = (s: number) => {
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
 const fmtTemp = (c: number) => (c > 0 ? `${c.toFixed(1)}°` : '—')
 
 const estLeft = computed(() => {
@@ -25,7 +15,20 @@ const estLeft = computed(() => {
   return fmtDur(Math.round((printer.printDuration / printer.currentLayer) * (printer.totalLayers - printer.currentLayer)))
 })
 const elapsed = computed(() => fmtDur(printer.printDuration))
-const fname = computed(() => printer.printFilename.replace(/\.gcode$/i, ''))
+
+const showPill = ref(false)
+let pillTimer: ReturnType<typeof setTimeout>
+const dismiss = () => { showPill.value = false; clearTimeout(pillTimer) }
+
+function togglePill() {
+  if (showPill.value) { dismiss() }
+  else { showPill.value = true; pillTimer = setTimeout(dismiss, 5000) }
+}
+
+onMounted(() => document.addEventListener('click', dismiss))
+onUnmounted(() => { document.removeEventListener('click', dismiss); clearTimeout(pillTimer) })
+
+const rawFname = computed(() => splitPath(printer.printFilename))
 
 function tempColor(c: number, t: number) {
   if (t <= 0) return 'var(--text-mute)'
@@ -43,68 +46,78 @@ function stateBadge(s: string) {
   return 'text-[var(--text-mute)]'
 }
 
-const hasJob = computed(() => !!printer.printFilename)
+const hasJob = computed(() => (printer.isPrinting || printer.isPaused) && !!printer.printFilename)
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-7 lg:gap-8 h-full">
+  <div class="card p-7 lg:p-8 flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between shrink-0 pb-5 max-sm:pb-4">
       <div class="text-[13px] font-semibold uppercase tracking-[0.12em] text-[var(--green)]">Live status</div>
-      <span v-if="hasJob" class="text-[11px] font-semibold uppercase tracking-wider capitalize" :class="stateBadge(printer.state)">
+      <span v-if="hasJob && printer.state && printer.state !== 'unknown'" class="text-[11px] font-semibold uppercase tracking-wider capitalize" :class="stateBadge(printer.state)">
         {{ printer.state }}
       </span>
     </div>
 
+    <div class="flex-1 flex flex-col justify-center gap-7 lg:gap-8">
+
     <!-- Temperatures: responsive grid -->
-    <div class="grid grid-cols-3 divide-x divide-[var(--border)] -mx-7 lg:-mx-8">
+    <div class="grid grid-cols-3 max-sm:grid-cols-1 divide-x max-sm:divide-x-0 max-sm:divide-y divide-white/10 -mx-7 lg:-mx-8">
       <div class="px-7 lg:px-8">
         <div class="t-title mb-3">Extruder</div>
         <div class="flex max-sm:flex-col max-sm:items-start items-baseline gap-1.5 max-sm:gap-0.5">
-          <span class="text-[24px] sm:text-[28px] font-semibold tracking-tight tabular-nums" :style="{ color: tempColor(printer.extruderTemp, printer.extruderTarget) }">
-            {{ fmtTemp(printer.extruderTemp) }}
+          <span class="text-[20px] sm:text-[28px] font-semibold tracking-tight tabular-nums" :style="{ color: tempColor(printer.extruderTemp, printer.extruderTarget) }">
+            {{ fmtTemp(printer.extruderTemp) }}<span class="text-[0.55em] align-super ml-px">C</span>
           </span>
-          <span v-if="printer.extruderTarget > 0" class="t-mono text-[13px] max-sm:hidden"> / {{ printer.extruderTarget.toFixed(0) }}°</span>
-          <span v-if="printer.extruderTarget > 0" class="t-mute text-[11px] hidden max-sm:inline">→ {{ printer.extruderTarget.toFixed(0) }}°</span>
+          <span v-if="printer.extruderTarget > 0" class="t-mono text-[11px] max-sm:hidden"> / {{ printer.extruderTarget.toFixed(0) }}°C</span>
+          <span v-if="printer.extruderTarget > 0" class="t-mute text-[10px] hidden max-sm:inline">→ {{ printer.extruderTarget.toFixed(0) }}°C</span>
         </div>
       </div>
       <div class="px-7 lg:px-8">
         <div class="t-title mb-3">Bed</div>
         <div class="flex max-sm:flex-col max-sm:items-start items-baseline gap-1.5 max-sm:gap-0.5">
-          <span class="text-[24px] sm:text-[28px] font-semibold tracking-tight tabular-nums" :style="{ color: tempColor(printer.bedTemp, printer.bedTarget) }">
-            {{ fmtTemp(printer.bedTemp) }}
+          <span class="text-[20px] sm:text-[28px] font-semibold tracking-tight tabular-nums" :style="{ color: tempColor(printer.bedTemp, printer.bedTarget) }">
+            {{ fmtTemp(printer.bedTemp) }}<span class="text-[0.55em] align-super ml-px">C</span>
           </span>
-          <span v-if="printer.bedTarget > 0" class="t-mono text-[13px] max-sm:hidden"> / {{ printer.bedTarget.toFixed(0) }}°</span>
-          <span v-if="printer.bedTarget > 0" class="t-mute text-[11px] hidden max-sm:inline">→ {{ printer.bedTarget.toFixed(0) }}°</span>
+          <span v-if="printer.bedTarget > 0" class="t-mono text-[11px] max-sm:hidden"> / {{ printer.bedTarget.toFixed(0) }}°C</span>
+          <span v-if="printer.bedTarget > 0" class="t-mute text-[10px] hidden max-sm:inline">→ {{ printer.bedTarget.toFixed(0) }}°C</span>
         </div>
       </div>
       <div class="px-7 lg:px-8">
         <div class="t-title mb-3">Chamber</div>
         <div class="flex max-sm:flex-col max-sm:items-start items-baseline gap-1.5 max-sm:gap-0.5">
-          <span class="text-[24px] sm:text-[28px] font-semibold tracking-tight tabular-nums text-[var(--text-dim)]">
-            {{ fmtTemp(printer.chamberTemp) }}
+          <span class="text-[20px] sm:text-[28px] font-semibold tracking-tight tabular-nums text-[var(--text-dim)]">
+            {{ fmtTemp(printer.chamberTemp) }}<span class="text-[0.55em] align-super ml-px">C</span>
           </span>
-          <span v-if="printer.chamberTarget > 0" class="t-mono text-[13px] max-sm:hidden"> / {{ printer.chamberTarget.toFixed(0) }}°</span>
-          <span v-if="printer.chamberTarget > 0" class="t-mute text-[11px] hidden max-sm:inline">→ {{ printer.chamberTarget.toFixed(0) }}°</span>
+          <span v-if="printer.chamberTarget > 0" class="t-mono text-[11px] max-sm:hidden"> / {{ printer.chamberTarget.toFixed(0) }}°C</span>
+          <span v-if="printer.chamberTarget > 0" class="t-mute text-[10px] hidden max-sm:inline">→ {{ printer.chamberTarget.toFixed(0) }}°C</span>
         </div>
       </div>
     </div>
 
+    <!-- Separator -->
+    <div class="h-px bg-[var(--border)] -mx-7 lg:-mx-8"></div>
+
     <!-- Print job info (shown whenever a job exists) -->
     <div v-if="hasJob" class="flex flex-col gap-5">
-      <div class="h-px bg-[var(--border)] -mx-7 lg:-mx-8"></div>
-
-      <div class="flex max-sm:flex-col gap-5">
-        <img
-          v-if="printer.thumbnailUrl"
-          :src="printer.thumbnailUrl"
-          class="w-32 h-32 rounded-lg object-cover shrink-0 bg-[var(--bg-input)] border border-[var(--border)]"
-        />
+      <div class="flex max-sm:flex-col gap-5 items-center">
+        <div v-if="printer.thumbnailUrl" class="relative group shrink-0 cursor-pointer">
+          <img
+            :src="printer.thumbnailUrl"
+            class="w-[11.2rem] h-[11.2rem] rounded-lg object-cover bg-[var(--bg-input)] border border-[var(--border)] transition-transform duration-200 sm:group-hover:scale-[2.5] sm:group-hover:z-30 sm:group-hover:shadow-2xl sm:group-hover:rounded-xl origin-left"
+          />
+        </div>
         <div class="flex-1 min-w-0 flex flex-col justify-center gap-5">
-          <div class="flex items-end justify-between gap-6">
+          <div class="flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start max-sm:gap-2">
             <div class="min-w-0">
               <div class="t-title mb-2">Print job</div>
-              <div class="text-[16px] font-medium truncate" :title="fname">{{ fname || 'Untitled job' }}</div>
+              <div class="relative min-w-0">
+                <div class="text-[16px] font-medium truncate select-none cursor-pointer" @click.stop="togglePill">{{ rawFname || 'Untitled job' }}</div>
+                <div
+                  class="absolute bottom-full left-0 mb-2 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] text-[13px] font-normal leading-snug whitespace-normal break-all max-w-[320px] shadow-xl z-40 transition-opacity duration-150"
+                  :class="showPill ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                >{{ rawFname }}</div>
+              </div>
             </div>
             <div class="text-[36px] font-semibold tabular-nums leading-none" :class="printer.isPrinting ? 'text-[var(--green)]' : 'text-[var(--text-dim)]'">
               {{ printer.printProgress }}<span class="text-[18px] text-[var(--text-mute)] ml-0.5">%</span>
@@ -140,13 +153,13 @@ const hasJob = computed(() => !!printer.printFilename)
     </div>
 
     <!-- Position / Fan / Filament (always visible) -->
-    <div class="grid grid-cols-3 max-sm:grid-cols-1 divide-x max-sm:divide-x-0 max-sm:divide-y divide-[var(--border)] -mx-7 lg:-mx-8" :class="hasJob ? 'border-t border-[var(--border)]' : 'border-t border-[var(--border)]'">
+    <div class="grid grid-cols-3 max-sm:grid-cols-1 divide-x max-sm:divide-x-0 max-sm:divide-y divide-white/10 -mx-7 lg:-mx-8">
       <div class="px-7 lg:px-8 max-sm:py-4 pt-7 lg:pt-8">
         <div class="t-title mb-3">Position</div>
         <div class="space-y-1.5 t-mono text-[13px]">
-          <div class="flex justify-between"><span style="color: var(--red)">X</span><span>{{ printer.position.x.toFixed(1) }}</span></div>
-          <div class="flex justify-between"><span style="color: var(--green)">Y</span><span>{{ printer.position.y.toFixed(1) }}</span></div>
-          <div class="flex justify-between"><span style="color: var(--blue)">Z</span><span>{{ printer.position.z.toFixed(2) }}</span></div>
+          <div class="flex justify-between"><span class="text-[var(--red)]">X</span><span>{{ printer.position.x.toFixed(1) }}</span></div>
+          <div class="flex justify-between"><span class="text-[var(--green)]">Y</span><span>{{ printer.position.y.toFixed(1) }}</span></div>
+          <div class="flex justify-between"><span class="text-[var(--blue)]">Z</span><span>{{ printer.position.z.toFixed(2) }}</span></div>
         </div>
       </div>
       <div class="px-7 lg:px-8 max-sm:py-4 pt-7 lg:pt-8">
@@ -164,6 +177,7 @@ const hasJob = computed(() => !!printer.printFilename)
           <span v-if="printer.filamentUsed > 0" class="t-mute text-[12px] ml-0.5">~{{ (printer.filamentUsed * 0.003).toFixed(1) }}g</span>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>

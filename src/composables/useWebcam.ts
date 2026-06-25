@@ -23,8 +23,9 @@ export function useWebcam() {
   const connected = ref(false)
   const connecting = ref(false)
   const error = ref<string | null>(null)
-  const statusLog = ref<string[]>([])
-  const streamUrl = ref('')
+
+  const log = (m: string, ...a: unknown[]) => { if (import.meta.env.DEV) console.log('[Webcam] ' + m, ...a) }
+  const logErr = (m: string, ...a: unknown[]) => { if (import.meta.env.DEV) console.error('[Webcam] ' + m, ...a) }
 
   let pc: RTCPeerConnection | null = null
   let stream: MediaStream | null = null
@@ -37,20 +38,12 @@ export function useWebcam() {
     return `http://${host}:${port}/call/webrtc_local`
   }
 
-  function log(msg: string) {
-    console.log('[Webcam]', msg)
-    statusLog.value.push(msg)
-    if (statusLog.value.length > 20) statusLog.value.shift()
-  }
-
   async function connect() {
     if (connecting.value || connected.value) return
     connecting.value = true
     error.value = null
-    statusLog.value = []
 
     signalingUrl = getSignalingUrl()
-    streamUrl.value = signalingUrl
 
     try {
       pc = new RTCPeerConnection({
@@ -60,7 +53,7 @@ export function useWebcam() {
 
       // Log all WebRTC events
       pc.addEventListener('track', (event) => {
-        log(`Track received: ${event.track.kind}`)
+        log('Track received:', event.track.kind)
         if (event.track.kind === 'video' && videoRef.value) {
           stream = event.streams[0]
           videoRef.value.srcObject = stream
@@ -71,38 +64,23 @@ export function useWebcam() {
 
       pc.addEventListener('iceconnectionstatechange', () => {
         const state = pc?.iceConnectionState ?? 'unknown'
-        log(`ICE state: ${state}`)
-        if (state === 'connected' || state === 'completed') {
-          log('ICE connected successfully')
-        }
+        log('ICE state:', state)
         if (state === 'disconnected' || state === 'failed') {
           connected.value = false
-          error.value = `ICE ${state}`
+          error.value = 'Connection lost'
         }
-      })
-
-      pc.addEventListener('icegatheringstatechange', () => {
-        log(`ICE gathering: ${pc?.iceGatheringState}`)
-      })
-
-      pc.addEventListener('connectionstatechange', () => {
-        log(`Connection state: ${pc?.connectionState}`)
-      })
-
-      pc.addEventListener('signalingstatechange', () => {
-        log(`Signaling state: ${pc?.signalingState}`)
       })
 
       const offer = await pc.createOffer({ offerToReceiveVideo: true })
       await pc.setLocalDescription(offer)
-      log(`Offer created`)
+      log('Offer created')
 
       // Wait for ICE candidates
       await new Promise<void>((resolve) => {
         if (pc!.iceGatheringState === 'complete') { resolve(); return }
         const check = () => {
           const state = pc!.iceGatheringState
-          log(`Gathering... ${state}`)
+          log('Gathering...', state)
           if (state === 'complete') {
             pc!.removeEventListener('icegatheringstatechange', check)
             resolve()
@@ -111,13 +89,13 @@ export function useWebcam() {
         pc!.addEventListener('icegatheringstatechange', check)
       })
 
-      log(`Gathering complete, sending offer`)
+      log('Gathering complete, sending offer')
       await sendOffer()
 
     } catch (e) {
       connecting.value = false
       error.value = e instanceof Error ? e.message : 'Failed'
-      log(`Error: ${e}`)
+      logErr('Error:', e)
       disconnect()
     }
   }
@@ -125,7 +103,7 @@ export function useWebcam() {
   async function sendOffer() {
     if (!pc?.localDescription) return
     const body = encodeOffer(pc.localDescription.sdp)
-    log(`Sending offer (${body.length} bytes base64)`)
+    log('Sending offer,', body.length, 'bytes base64')
 
     try {
       const resp = await fetch(signalingUrl, {
@@ -136,14 +114,14 @@ export function useWebcam() {
       })
 
       const answerText = await resp.text()
-      log(`Got answer (${answerText.length} bytes, HTTP ${resp.status})`)
+      log('Got answer,', answerText.length, 'bytes, HTTP', resp.status)
 
       if (!resp.ok || !answerText || answerText === '{}') {
         throw new Error(`Signaling failed (HTTP ${resp.status})`)
       }
 
       const answerSdp = decodeAnswer(answerText)
-      log(`Answer SDP: ${answerSdp.substring(0, 100)}...`)
+      log('Answer SDP:', answerSdp.substring(0, 100) + '...')
 
       await pc.setRemoteDescription(
         new RTCSessionDescription({ type: 'answer', sdp: answerSdp })
@@ -153,7 +131,7 @@ export function useWebcam() {
     } catch (e) {
       connecting.value = false
       error.value = e instanceof Error ? e.message : 'Signaling failed'
-      log(`Signaling error: ${e}`)
+      logErr('Signaling error:', e)
       disconnect()
     }
   }
@@ -168,5 +146,5 @@ export function useWebcam() {
 
   onUnmounted(() => disconnect())
 
-  return { videoRef, connected, connecting, error, statusLog, streamUrl, connect, disconnect }
+  return { videoRef, connected, connecting, error, connect, disconnect }
 }

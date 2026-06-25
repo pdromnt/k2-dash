@@ -1,18 +1,6 @@
 import { api } from "./client";
 
-export interface PrinterInfo {
-  state: string;
-  state_message: string;
-  hostname: string;
-  software_version: string;
-  cpu_info: string;
-  klipper_path: string;
-  python_path: string;
-  log_file: string;
-  config_file: string;
-}
-
-export interface PrinterObjectsQuery {
+interface PrinterObjectsQuery {
   eventtime: number;
   status: Record<string, Record<string, unknown>>;
 }
@@ -35,14 +23,9 @@ export interface HistoryJob {
   filament_used: number;
 }
 
-export interface HistoryList {
+interface HistoryList {
   count: number;
   jobs: HistoryJob[];
-}
-
-export async function getPrinterInfo(): Promise<PrinterInfo> {
-  const data = await api.get<{ result: PrinterInfo }>("/printer/info");
-  return data.result;
 }
 
 export async function queryPrinterObjects(
@@ -78,7 +61,7 @@ export async function getFileList(path = "gcodes"): Promise<FileInfo[]> {
 }
 
 export async function deleteFile(filePath: string): Promise<string> {
-  return api.delete(`/server/files/${encodeURIComponent(filePath)}`);
+  return api.delete(`/server/files/gcodes/${encodeURIComponent(filePath)}`);
 }
 
 export async function startPrint(filename: string): Promise<string> {

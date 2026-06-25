@@ -16,6 +16,12 @@ if (!host) {
   process.exit(1)
 }
 
+const dist = path.join(__dirname, 'dist')
+if (!fs.existsSync(path.join(dist, 'index.html'))) {
+  console.error('Error: dist/index.html not found. Run vue-tsc -b && eslint src/ && vite build first.')
+  process.exit(1)
+}
+
 // Creality K2 Plus printers use universal credentials:
 //   root / creality_2024
 const PASSWORD = 'creality_2024'

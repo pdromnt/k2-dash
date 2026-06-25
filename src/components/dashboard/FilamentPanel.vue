@@ -8,8 +8,6 @@ const hasSlots = computed(() => printer.cfsSlots.length > 0)
 
 const loadedCount = computed(() => printer.cfsSlots.filter(s => s.type).length)
 
-const cfsHumidity = computed(() => printer.cfsHumidity)
-
 function slotColor(s: (typeof printer.cfsSlots)[number]): string {
   const c = s.color
   if (!c || c === '#' || c === '#-1') return 'var(--bg-input)'
@@ -32,13 +30,14 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
         <span v-if="printer.cfsName" class="text-[10px] font-medium text-[var(--text-mute)] uppercase tracking-wider">
           {{ printer.cfsName }}
         </span>
-        <span v-if="cfsHumidity !== null" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium"
-          :class="cfsHumidity <= 30 ? 'bg-[var(--green)]/10 text-[var(--green)]' : cfsHumidity <= 50 ? 'bg-[var(--amber)]/10 text-[var(--amber)]' : 'bg-[var(--red)]/10 text-[var(--red)]'"
-        >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-          {{ cfsHumidity }}%
+      </div>
+      <div v-if="printer.cfsHumidity !== null || printer.cfsTemp !== null" class="inline-flex items-stretch rounded-lg border border-[var(--border)] bg-[var(--bg-input)] overflow-hidden">
+        <span class="flex items-center px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-r border-[var(--border)] text-[var(--text-mute)]">CFS 1</span>
+          <span v-if="printer.cfsHumidity !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
+            💧 {{ printer.cfsHumidity }}%
+        </span>
+        <span v-if="printer.cfsTemp !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
+          🌡️ {{ printer.cfsTemp }}°C
         </span>
       </div>
       <div class="flex items-center gap-2">
@@ -77,7 +76,7 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
         </span>
 
         <span v-if="s.minTemp > 0" class="text-[10px] font-mono text-[var(--text-mute)]">
-          {{ s.minTemp }}–{{ s.maxTemp }}° C
+          {{ s.minTemp }}–{{ s.maxTemp }}°C
         </span>
       </div>
       </div>

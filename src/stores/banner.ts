@@ -24,9 +24,5 @@ export const useBannerStore = defineStore('banner', () => {
     banners.value = banners.value.filter(b => b.id !== id)
   }
 
-  function clear() {
-    banners.value = []
-  }
-
-  return { banners, show, dismiss, clear }
+  return { banners, show, dismiss }
 })

@@ -1,4 +1,4 @@
-export class ApiError extends Error {
+class ApiError extends Error {
   status: number
   body: string
   constructor(message: string, status: number, body: string) {
@@ -31,7 +31,7 @@ async function request<T>(
 
   const resp = await fetch(url, {
     ...options,
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(3000),
   })
 
   if (!resp.ok) {

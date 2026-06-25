@@ -1,15 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-
-export interface PrinterFile {
-  path: string
-  modified: number
-  size: number
-  permissions: string
-}
+import type { FileInfo } from '@/api/moonraker'
 
 export const useFilesStore = defineStore('files', () => {
-  const files = ref<PrinterFile[]>([])
+  const files = ref<FileInfo[]>([])
   const uploading = ref(false)
   const uploadProgress = ref(0)
   const loading = ref(false)

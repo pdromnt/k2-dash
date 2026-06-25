@@ -2,23 +2,22 @@
 import { ref, onMounted } from 'vue'
 import { getHistoryList, type HistoryJob } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
+import { fmtDur, fmtDate, errMsg } from '@/utils/format'
 
 const jobs = ref<HistoryJob[]>([])
 const loading = ref(false)
 const banner = useBannerStore()
 
-const fmtDur = (s: number) => {
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-const fmtDate = (ts: number) => new Date(ts * 1000).toLocaleString()
-
 function statusColor(s: string) {
   if (s === 'completed') return 'var(--green)'
+  if (s === 'in_progress') return 'var(--text)'
   if (s === 'cancelled') return 'var(--amber)'
   if (s === 'error') return 'var(--red)'
   return 'var(--text-mute)'
+}
+
+function fmtStatus(s: string) {
+  return s.replace(/_/g, ' ')
 }
 
 async function load() {
@@ -27,7 +26,7 @@ async function load() {
     const d = await getHistoryList()
     jobs.value = d.jobs || []
   } catch (e) {
-    banner.show('Failed to fetch history', e instanceof Error ? e.message : undefined)
+    banner.show('Failed to fetch history', errMsg(e))
   }
   loading.value = false
 }
@@ -36,7 +35,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-6 h-full">
+  <div class="card p-7 lg:p-8 flex flex-col gap-6 overflow-hidden">
     <div class="flex items-center justify-between">
       <div class="t-title">History</div>
       <div class="flex items-center gap-3">
@@ -49,9 +48,9 @@ onMounted(load)
       </div>
     </div>
 
-    <div class="flex-1 min-h-0 -mx-7 lg:-mx-8 overflow-y-auto">
+    <div class="max-h-[380px] -mx-7 lg:-mx-8 overflow-y-auto">
       <div v-if="loading" class="px-7 lg:px-8 py-16 text-center text-[var(--text-mute)]">
-        <span class="loading loading-spinner loading-sm"></span>
+        <span class="spinner"></span>
         <p class="mt-3 t-mute">Loading…</p>
       </div>
 
@@ -69,7 +68,7 @@ onMounted(load)
               </div>
             </div>
             <span class="text-[11px] font-semibold uppercase tracking-wider" :style="{ color: statusColor(j.status) }">
-              {{ j.status }}
+              {{ fmtStatus(j.status) }}
             </span>
           </div>
         </li>

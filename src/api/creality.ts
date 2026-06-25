@@ -5,7 +5,6 @@ export async function checkConnection(): Promise<Record<string, unknown>> {
 }
 
 export async function uploadFileKlipper4408(
-  _unused: string,
   file: File,
   onProgress?: (pct: number, speed: number) => void
 ): Promise<unknown> {

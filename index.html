@@ -1,13 +1,20 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>K2 Dash</title>
+    <meta name="theme-color" content="#0a0b0d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/creality.png" />
+    <title>K2Dash</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:rgba(255,255,255,0.3);font-family:system-ui,sans-serif;font-size:14px;letter-spacing:0.1em;text-transform:uppercase">K2Dash</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

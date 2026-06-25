@@ -1,23 +1,21 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import { useWebcam } from '@/composables/useWebcam'
 
 const { videoRef, connected, connecting, error, connect, disconnect } = useWebcam()
 
 onMounted(() => { if (import.meta.env.VITE_PRINTER_HOST) connect() })
-onUnmounted(() => disconnect())
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-6">
+  <div class="card p-7 lg:p-8 flex flex-col gap-6 h-full">
     <div class="t-title">Webcam</div>
 
-    <div class="relative aspect-video bg-black rounded-lg overflow-hidden border border-[var(--border)]">
+    <div class="relative grow min-h-[200px] bg-black rounded-lg overflow-hidden border border-[var(--border)]">
       <video ref="videoRef" class="w-full h-full object-contain" autoplay playsinline muted></video>
-
       <div v-if="connecting" class="absolute inset-0 flex items-center justify-center bg-black/60">
         <div class="text-center">
-          <span class="loading loading-spinner text-[var(--green)]/70"></span>
+          <span class="spinner"></span>
            <p class="mt-3 t-mute uppercase tracking-wider">Connecting…</p>
         </div>
       </div>

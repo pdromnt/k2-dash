@@ -1,9 +1,7 @@
 import { ref, onUnmounted, watch } from 'vue'
 import { usePrinterStore } from '@/stores/printer'
-import { useToastStore } from '@/stores/toast'
 
 const WS_PORT = '9999'
-const WS_DISABLED_KEY = 'k2dash:printerWsDisabled'
 
 function getUrl(): string {
   const host = import.meta.env.VITE_PRINTER_HOST || '127.0.0.1'
@@ -15,11 +13,17 @@ function getUrl(): string {
 
 export function usePrinterWs() {
   const store = usePrinterStore()
-  const toast = useToastStore()
   const ws = ref<WebSocket | null>(null)
   const connected = ref(false)
   let boxsTimer: ReturnType<typeof setInterval> | null = null
   let statusTimer: ReturnType<typeof setInterval> | null = null
+  let retryCount = 0
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+  function backoff(): number {
+    // 1s, 2s, 4s, 8s, 16s, 30s, 30s...
+    return Math.min(1000 * Math.pow(2, retryCount), 30000)
+  }
 
   // When print filename changes, try to match against cached file list
   watch(() => store.printFilename, (name) => {
@@ -36,16 +40,17 @@ export function usePrinterWs() {
 
   function connect() {
     if (!import.meta.env.VITE_PRINTER_HOST) return
-    if (localStorage.getItem(WS_DISABLED_KEY) === '1') return
 
       try {
           const socket = new WebSocket(getUrl())
           ws.value = socket
-          ;(window as Window & { __printerWs?: WebSocket }).__printerWs = socket
+          window.__printerWs = socket
 
       socket.addEventListener('open', () => {
         connected.value = true
-        localStorage.removeItem(WS_DISABLED_KEY)
+        store.connected = true
+        retryCount = 0
+        store.wsActive = true
 
         // Full initial state request (like CrealityPrint's ReqInit)
         send({
@@ -59,9 +64,9 @@ export function usePrinterWs() {
           },
         })
 
-        // Poll status every 5s (like ReqPrintObjects)
+        // Poll status + file list every 5s
         statusTimer = setInterval(() => {
-          send({ method: 'get', params: { reqPrintObjects: 1 } })
+          send({ method: 'get', params: { reqPrintObjects: 1, reqGcodeFile: 1 } })
         }, 5000)
 
         // Poll CFS every 20s (like GetBoxsInfo)
@@ -79,19 +84,35 @@ export function usePrinterWs() {
 
       socket.addEventListener('close', () => {
         connected.value = false
+        store.connected = false
+        store.wsActive = false
         stopTimers()
+        scheduleRetry()
       })
 
       socket.addEventListener('error', () => {
         connected.value = false
+        store.connected = false
+        store.wsActive = false
         stopTimers()
         socket.close()
-        localStorage.setItem(WS_DISABLED_KEY, '1')
-        toast.show('Printer WebSocket (9999) unavailable. Click to dismiss.', { persistent: true, kind: 'info' })
+        scheduleRetry()
       })
     } catch {
       connected.value = false
+      scheduleRetry()
     }
+  }
+
+  function scheduleRetry() {
+    if (retryTimer) return
+    retryCount++
+    const delay = backoff()
+
+    retryTimer = setTimeout(() => {
+      retryTimer = null
+      connect()
+    }, delay)
   }
 
   function parseMessage(msg: Record<string, unknown>) {
@@ -105,51 +126,85 @@ export function usePrinterWs() {
 
     // File lists (G-code files + timelapse videos)
     if (msg.retGcodeFileInfo2) parseFileList(msg.retGcodeFileInfo2)
-
-    // Materials
-    if (msg.materials) parseMaterials(msg.materials)
   }
 
   function parseStatus(msg: Record<string, unknown>) {
-    // Printer state
-    if (typeof msg.deviceState === 'string') store.state = msg.deviceState
-    else if (typeof msg.state === 'string') store.state = msg.state
+    const n = (v: unknown): number | undefined => {
+      if (typeof v === 'number') return v
+      if (typeof v === 'string') { const p = parseFloat(v); return isNaN(p) ? undefined : p }
+      return undefined
+    }
+
+    // Printer state — numeric mapping from Creality WS
+    if (typeof msg.deviceState === 'number') {
+      const m: Record<number, string> = { 0: 'idle', 1: 'printing', 2: 'paused', 3: 'complete', 4: 'preparing', 5: 'error' }
+      store.state = m[msg.deviceState] || 'unknown'
+      // Clear print job when idle (no job running or completed)
+      if (msg.deviceState === 0) {
+        store.printFilename = ''
+        store.printProgress = 0
+        store.currentLayer = 0
+        store.totalLayers = 0
+        store.thumbnailUrl = ''
+      }
+    } else if (typeof msg.deviceState === 'string') {
+      store.state = msg.deviceState
+      if (msg.deviceState === 'idle') {
+        store.printFilename = ''
+        store.printProgress = 0
+        store.currentLayer = 0
+        store.totalLayers = 0
+      }
+    } else if (typeof msg.state === 'string') {
+      store.state = msg.state
+    }
 
     // Temperatures
-    if (typeof msg.nozzleTemp === 'number') store.extruderTemp = msg.nozzleTemp
-    if (typeof msg.targetNozzleTemp === 'number') store.extruderTarget = msg.targetNozzleTemp
-    if (typeof msg.bedTemp0 === 'number') store.bedTemp = msg.bedTemp0
-    if (typeof msg.targetBedTemp0 === 'number') store.bedTarget = msg.targetBedTemp0
-    if (typeof msg.boxTemp === 'number') store.chamberTemp = msg.boxTemp
-    if (typeof msg.targetBoxTemp === 'number') store.chamberTarget = msg.targetBoxTemp
+    const et = n(msg.nozzleTemp); if (et !== undefined) store.extruderTemp = et
+    const ett = n(msg.targetNozzleTemp); if (ett !== undefined) store.extruderTarget = ett
+    const bt = n(msg.bedTemp0); if (bt !== undefined) store.bedTemp = bt
+    const btt = n(msg.targetBedTemp0); if (btt !== undefined) store.bedTarget = btt
+    const ct = n(msg.boxTemp); if (ct !== undefined) store.chamberTemp = ct
+    const ctt = n(msg.targetBoxTemp); if (ctt !== undefined) store.chamberTarget = ctt
 
     // Print progress
-    if (typeof msg.printProgress === 'number') {
-      store.printProgress = msg.printProgress <= 1 ? Math.round(msg.printProgress * 100) : Math.round(msg.printProgress)
-    }
-    if (typeof msg.dProgress === 'number') store.displayProgress = msg.dProgress
+    const pp = n(msg.printProgress)
+    if (pp !== undefined) store.printProgress = pp <= 1 ? Math.round(pp * 100) : Math.round(pp)
     if (typeof msg.printFileName === 'string') store.printFilename = msg.printFileName
-    if (typeof msg.printJobTime === 'number') store.printDuration = msg.printJobTime
-    if (typeof msg.printLeftTime === 'number') store.printLeftTime = msg.printLeftTime
-    if (typeof msg.layer === 'number') store.currentLayer = msg.layer
-    if (typeof msg.TotalLayer === 'number') store.totalLayers = msg.TotalLayer
-    if (typeof msg.usedMaterialLength === 'number') store.filamentUsed = msg.usedMaterialLength
+    const pjt = n(msg.printJobTime); if (pjt !== undefined) store.printDuration = pjt
+    const plt = n(msg.printLeftTime); if (plt !== undefined) store.printLeftTime = plt
+    // WS reports layer at 3x the actual count
+    const l = n(msg.layer)
+    if (l !== undefined) {
+      store.currentLayer = Math.round(l / 3)
+      if (import.meta.env.DEV) console.log('[WS layer]', l, '->', store.currentLayer, '/', n(msg.TotalLayer))
+    }
+    const tl = n(msg.TotalLayer); if (tl !== undefined) store.totalLayers = tl
+    const fu = n(msg.usedMaterialLength); if (fu !== undefined) store.filamentUsed = fu
 
     // Fans
-    if (typeof msg.modelFanPct === 'number') store.fanPart = msg.modelFanPct / 100
-    if (typeof msg.auxiliaryFanPct === 'number') store.fanAux = msg.auxiliaryFanPct / 100
-    if (typeof msg.caseFanPct === 'number') store.fanChamber = msg.caseFanPct / 100
+    const mfp = n(msg.modelFanPct); if (mfp !== undefined) store.fanPart = mfp / 100
+    const afp = n(msg.auxiliaryFanPct); if (afp !== undefined) store.fanAux = afp / 100
+    const cfp = n(msg.caseFanPct); if (cfp !== undefined) store.fanChamber = cfp / 100
 
     // LED
-    if (typeof msg.lightSw === 'number') store.ledState = msg.lightSw > 0
-    else if (typeof msg.lightSw === 'string') store.ledState = msg.lightSw === 'on'
+    const ls = n(msg.lightSw)
+    if (ls !== undefined) store.ledState = ls > 0
 
-    // Position
+    // Position — "X:190.25 Y:164.31 Z:6.08" string or array
     if (msg.curPosition) {
-      const pos = msg.curPosition as number[]
-      if (Array.isArray(pos) && pos.length >= 3) {
-        store.position = { x: pos[0], y: pos[1], z: pos[2] }
+      let pos: { x: number; y: number; z: number } | null = null
+      if (typeof msg.curPosition === 'string') {
+        const m = (msg.curPosition as string).match(/X:([-\d.]+)\s*Y:([-\d.]+)\s*Z:([-\d.]+)/)
+        if (m) pos = { x: parseFloat(m[1]), y: parseFloat(m[2]), z: parseFloat(m[3]) }
+        else {
+          try { const a = JSON.parse(msg.curPosition); if (Array.isArray(a) && a.length >= 3) pos = { x: n(a[0]) ?? 0, y: n(a[1]) ?? 0, z: n(a[2]) ?? 0 } } catch { /* ignore */ }
+        }
+      } else if (Array.isArray(msg.curPosition)) {
+        const a = msg.curPosition as number[]
+        if (a.length >= 3) pos = { x: n(a[0]) ?? 0, y: n(a[1]) ?? 0, z: n(a[2]) ?? 0 }
       }
+      if (pos) store.position = pos
     }
   }
 
@@ -161,13 +216,18 @@ export function usePrinterWs() {
 
     // Get humidity from the first non-spool CFS box
     let humidity: number | null = null
+    let temp: number | null = null
     for (const box of boxs) {
       if (box.type === 0 && typeof box.humidity === 'number') {
         humidity = box.humidity
-        break
       }
+      if (box.type === 0 && typeof box.temp === 'number') {
+        temp = box.temp
+      }
+      if (humidity !== null && temp !== null) break
     }
     if (humidity !== null) store.cfsHumidity = humidity
+    if (temp !== null) store.cfsTemp = temp
 
     const slots: typeof store.cfsSlots = []
 
@@ -197,8 +257,6 @@ export function usePrinterWs() {
 
     store.cfsSlots = slots
   }
-
-  function parseMaterials(m: unknown) { void m }
 
   function parseFileList(info: unknown) {
     const files = Array.isArray(info) ? info as Array<Record<string, unknown>> : undefined
@@ -237,7 +295,6 @@ export function usePrinterWs() {
           const total = weights.reduce((a, b) => a + b, 0)
           if (total > 0) store.filamentEstimatedWeight = total
         }
-        if (typeof f.timeCost === 'number' && f.timeCost > 0) store.filamentEstimatedTime = f.timeCost
         break
       }
     }
@@ -251,6 +308,8 @@ export function usePrinterWs() {
   function disconnect() {
     if (ws.value) { ws.value.close(); ws.value = null }
     stopTimers()
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
+    retryCount = 0
     connected.value = false
   }
 

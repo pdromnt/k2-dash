@@ -1,47 +1,37 @@
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { usePrinterStore } from "@/stores/printer";
-import { queryPrinterObjects, getPrinterInfo } from "@/api/moonraker";
+import { queryPrinterObjects } from "@/api/moonraker";
 
-const QUERY_OBJECTS = {
+const FULL_QUERY = {
   print_stats: null,
-  display_status: ["progress"],
   extruder: ["temperature", "target"],
   heater_bed: ["temperature", "target"],
   "temperature_sensor chamber_temp": ["temperature"],
   "heater_generic chamber_heater": ["temperature", "target"],
   toolhead: ["position"],
-  fan: ["speed"],
   "output_pin fan0": ["value"],
   "output_pin fan1": ["value"],
   "output_pin fan2": ["value"],
   "output_pin LED": ["value"],
-  filament_rack: null,
-  "filament_switch_sensor filament_sensor": null,
   motion_report: ["live_position"],
 };
 
 export function usePrinter() {
   const store = usePrinterStore();
   const pollTimer = ref<ReturnType<typeof setInterval>>();
-  const error = ref<string | null>(null);
 
-  let lastFilename = ''
+  let lastPoll = 0
 
   async function pollStatus() {
+    const now = Date.now()
+    if (now - lastPoll < 800) return
+    lastPoll = now
     try {
-      const data = await queryPrinterObjects(QUERY_OBJECTS);
+      const data = await queryPrinterObjects(FULL_QUERY);
       store.updateFromData(data.status);
       store.connected = true;
-      error.value = null;
-
-      // Fetch thumbnail when filename changes
-      if (store.printFilename && store.printFilename !== lastFilename) {
-        lastFilename = store.printFilename
-        fetchThumbnail(store.printFilename)
-      }
     } catch (e) {
-      if (e instanceof Error && e.name !== "AbortError") {
-        error.value = e.message;
+      if (!(e instanceof Error && e.name === "AbortError")) {
         store.connected = false;
       }
     }
@@ -81,15 +71,19 @@ export function usePrinter() {
 
   onMounted(() => {
     if (import.meta.env.VITE_PRINTER_HOST) {
-      startPolling();
-      // Fetch hostname once
-      getPrinterInfo().then(info => {
-        store.hostname = info.hostname || ''
-      }).catch(() => {})
+      startPolling()
     }
   });
 
   onUnmounted(() => stopPolling());
 
-  return { error, pollStatus, startPolling, stopPolling };
+  // Stop Moonraker poll when WS is active (WS provides all data incl. layers/3)
+  watch(() => store.wsActive, (active) => {
+    if (active) { stopPolling() } else { startPolling() }
+  })
+
+  // Fetch thumbnail from G-code header when filename changes
+  watch(() => store.printFilename, (filename) => {
+    if (filename) fetchThumbnail(filename)
+  })
 }

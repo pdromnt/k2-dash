@@ -4,6 +4,7 @@ import { usePrinterStore } from '@/stores/printer'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
 import { emergencyStop, sendGcode, pausePrint, resumePrint, cancelPrint } from '@/api/moonraker'
+import { errMsg } from '@/utils/format'
 
 const printer = usePrinterStore()
 const banner = useBannerStore()
@@ -17,7 +18,7 @@ async function cmd(script: string, label?: string) {
     await sendGcode(script)
     toast.show(label ? `${label} · OK` : `OK · ${script.split('\n')[0]}`)
   } catch (e) {
-    banner.show('Failed to send G-code', e instanceof Error ? e.message : undefined)
+    banner.show('Failed to send G-code', errMsg(e))
   }
 }
 
@@ -127,7 +128,7 @@ const quickCmds = [
             <div class="flex-1">
               <div class="flex items-baseline gap-3 mb-2">
                 <span class="t-title">Extruder</span>
-                <span class="t-mono text-[12px]">{{ printer.extruderTemp.toFixed(1) }}°</span>
+                <span class="t-mono text-[12px]">{{ printer.extruderTemp.toFixed(1) }}°C</span>
               </div>
               <div class="flex items-center gap-2.5">
                 <input v-model="tE" type="number" class="input font-mono" placeholder="200" />
@@ -140,7 +141,7 @@ const quickCmds = [
             <div class="flex-1">
               <div class="flex items-baseline gap-3 mb-2">
                 <span class="t-title">Bed</span>
-                <span class="t-mono text-[12px]">{{ printer.bedTemp.toFixed(1) }}°</span>
+                <span class="t-mono text-[12px]">{{ printer.bedTemp.toFixed(1) }}°C</span>
               </div>
               <div class="flex items-center gap-2.5">
                 <input v-model="tB" type="number" class="input font-mono" placeholder="55" />
@@ -153,14 +154,14 @@ const quickCmds = [
             <div class="flex-1">
               <div class="flex items-baseline gap-3 mb-2">
                 <span class="t-title">Chamber</span>
-                <span class="t-mono text-[12px]">{{ printer.chamberTemp.toFixed(1) }}°</span>
+                <span class="t-mono text-[12px]">{{ printer.chamberTemp.toFixed(1) }}°C</span>
               </div>
               <div class="flex items-center gap-2.5">
                 <input v-model="tC" type="number" class="input font-mono" placeholder="0" />
                 <span class="t-mute text-[12px]">°C</span>
               </div>
             </div>
-            <button class="btn btn-primary btn-sm mt-6" @click="setTemp('chamber', tC)">Set</button>
+            <button class="btn btn-primary btn-sm mt-6" @click="setTemp('heater_generic chamber_heater', tC)">Set</button>
           </div>
         </div>
       </div>
@@ -202,7 +203,7 @@ const quickCmds = [
         <div class="t-title mb-5">Lights</div>
         <div class="flex items-center gap-4 mb-6">
           <span class="w-2.5 h-2.5 rounded-full" :class="printer.ledState ? 'bg-[var(--green)]' : 'bg-[var(--text-mute)]'"></span>
-          <span class="text-[14px] font-medium" :class="printer.ledState ? 'text-[var(--green)]' : 'text-[var(--text-dim)]'">
+          <span class="text-[14px] font-medium uppercase tracking-wider" :class="printer.ledState ? 'text-[var(--green)]' : 'text-[var(--text-dim)]'">
             Chamber {{ printer.ledState ? 'ON' : 'OFF' }}
           </span>
           <button class="btn btn-sm ml-auto" :class="printer.ledState ? 'btn-primary' : ''" @click="toggleLed()">

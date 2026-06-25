@@ -5,6 +5,7 @@ import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
 import { getFileList, deleteFile, startPrint, type FileInfo } from '@/api/moonraker'
 import { uploadFileKlipper4408 } from '@/api/creality'
+import { fmtSize, fmtDate, splitPath, errMsg } from '@/utils/format'
 
 const store = useFilesStore()
 const banner = useBannerStore()
@@ -17,7 +18,7 @@ async function load() {
   try {
     store.files = await getFileList()
   } catch (e) {
-    banner.show('Failed to fetch files', e instanceof Error ? e.message : undefined)
+    banner.show('Failed to fetch files', errMsg(e))
   }
   store.loading = false
 }
@@ -29,7 +30,7 @@ async function del(f: FileInfo) {
     toast.show(`Deleted ${f.path}`)
     await load()
   } catch (e) {
-    banner.show('Failed to delete file', e instanceof Error ? e.message : undefined)
+    banner.show('Failed to delete file', errMsg(e))
   }
 }
 
@@ -38,7 +39,7 @@ async function pr(f: FileInfo) {
     await startPrint(f.path)
     toast.show(`Printing ${f.path}`)
   } catch (e) {
-    banner.show('Failed to start print', e instanceof Error ? e.message : undefined)
+    banner.show('Failed to start print', errMsg(e))
   }
 }
 
@@ -48,21 +49,16 @@ async function up() {
   store.uploading = true
   store.uploadProgress = 0
   try {
-    await uploadFileKlipper4408('', f, (p) => (store.uploadProgress = p))
+    await uploadFileKlipper4408(f, (p) => (store.uploadProgress = p))
     toast.show(`Uploaded ${f.name}`)
     store.uploadProgress = 100
     await load()
   } catch (e) {
-    banner.show('Failed to upload file', e instanceof Error ? e.message : undefined)
+    banner.show('Failed to upload file', errMsg(e))
   }
   store.uploading = false
   if (inp.value) inp.value.value = ''
 }
-
-const fmtSize = (b: number) =>
-  b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`
-const fmtDate = (ts: number) => new Date(ts * 1000).toLocaleString()
-const fname = (p: string) => p.split('/').pop() || p
 
 onMounted(load)
 </script>
@@ -99,7 +95,7 @@ onMounted(load)
     <!-- File list -->
     <div class="-mx-7 lg:-mx-8">
       <div v-if="store.loading" class="px-7 lg:px-8 py-16 text-center text-[var(--text-mute)]">
-        <span class="loading loading-spinner loading-sm"></span>
+        <span class="spinner spinner-sm"></span>
         <p class="mt-3 t-mute">Loading…</p>
       </div>
 
@@ -111,7 +107,7 @@ onMounted(load)
         <li v-for="f in store.files" :key="f.path" class="px-7 lg:px-8 py-4 hover:bg-white/[0.015] transition-colors group">
           <div class="flex items-center gap-4">
             <div class="flex-1 min-w-0">
-              <div class="text-[14px] font-medium truncate" :title="f.path">{{ fname(f.path) }}</div>
+              <div class="text-[14px] font-medium truncate" :title="f.path">{{ splitPath(f.path) }}</div>
               <div class="t-mono text-[12px] mt-1">
                 {{ fmtSize(f.size) }} · {{ fmtDate(f.modified) }}
               </div>

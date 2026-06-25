@@ -3,6 +3,7 @@ import { usePrinterStore } from '@/stores/printer'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
 import { computed } from 'vue'
+import { fmtSize, fmtDate } from '@/utils/format'
 
 const printer = usePrinterStore()
 const banner = useBannerStore()
@@ -12,16 +13,6 @@ const host = import.meta.env.VITE_PRINTER_HOST || ''
 
 const hasFiles = computed(() => printer.timelapseFiles.length > 0)
 
-function fmtSize(b: number) {
-  if (b < 1024) return `${b} B`
-  if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`
-  return `${(b / 1048576).toFixed(1)} MB`
-}
-
-function fmtDate(ts: number) {
-  return ts ? new Date(ts * 1000).toLocaleString() : ''
-}
-
 function downloadUrl(file: { path: string; name: string }) {
   const p = file.path || file.name
   return `http://${host}/download/${encodeURIComponent(p)}`
@@ -29,7 +20,7 @@ function downloadUrl(file: { path: string; name: string }) {
 
 async function deleteTimelapse(file: { name: string }) {
   if (!confirm(`Delete ${file.name}?`)) return
-  const ws = (window as Window & { __printerWs?: WebSocket }).__printerWs
+  const ws = window.__printerWs
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
       method: 'set',
