@@ -74,7 +74,7 @@ export const usePrinterStore = defineStore('printer', () => {
     if (data.print_stats) {
       const ps = data.print_stats as Record<string, unknown>
       if (!wsActive.value && typeof ps.state === 'string') state.value = ps.state
-      if (typeof ps.filename === 'string') printFilename.value = ps.filename
+      if (typeof ps.filename === 'string' && ps.filename) printFilename.value = ps.filename
       if (typeof ps.print_duration === 'number') printDuration.value = ps.print_duration
       if (typeof ps.filament_used === 'number') filamentUsed.value = ps.filament_used
       // Layers: always accept from Moonraker (WS layer field is unreliable)

@@ -85,8 +85,8 @@ const quickCmds = [
       <button v-if="printer.isPrinting" class="btn btn-warn" @click="pausePrint()">Pause</button>
       <button v-if="printer.isPrinting || printer.isPaused" class="btn" @click="cancelPrint()">Cancel</button>
       <span v-if="!printer.isPrinting && !printer.isPaused" class="t-mute uppercase tracking-wider">No active print</span>
-      <button class="btn btn-danger ml-auto" @click="emergencyStop()">
-        Emergency stop
+      <button class="btn btn-danger ml-auto shrink-0" @click="emergencyStop()">
+        🚨 ABORT
       </button>
     </div>
 

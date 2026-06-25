@@ -93,7 +93,7 @@ onMounted(load)
     <div class="h-px bg-[var(--border)]"></div>
 
     <!-- File list -->
-    <div class="-mx-7 lg:-mx-8">
+    <div class="-mx-7 lg:-mx-8 flex-1 min-h-0 max-sm:flex-none max-sm:max-h-[320px] overflow-y-auto">
       <div v-if="store.loading" class="px-7 lg:px-8 py-16 text-center text-[var(--text-mute)]">
         <span class="spinner spinner-sm"></span>
         <p class="mt-3 t-mute">Loading…</p>

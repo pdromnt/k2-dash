@@ -38,7 +38,7 @@ onMounted(() => { if (import.meta.env.VITE_PRINTER_HOST) connect() })
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-6 h-full">
+  <div class="card p-7 lg:p-8 flex flex-col gap-6 h-full min-h-[420px]">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="t-title">Console</div>

@@ -43,10 +43,8 @@ export function useConsole() {
     if (sock?.readyState === WebSocket.OPEN) {
       connected.value = true
       sock.addEventListener('message', onWsMessage)
-      addMessage('system', 'Console attached to printer WS')
-      return
+      addMessage('system', 'Console Status: Ready.')
     }
-    addMessage('system', 'Printer WS not connected — G-code will use HTTP fallback')
   }
 
   function disconnect() {

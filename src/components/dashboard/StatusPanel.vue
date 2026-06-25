@@ -59,11 +59,11 @@ const hasJob = computed(() => printer.isPrinting || printer.isPaused)
       </span>
     </div>
 
-    <div class="flex-1 flex flex-col justify-center gap-7 lg:gap-8">
+    <div class="flex-1 flex flex-col justify-center gap-5 max-sm:gap-4 lg:gap-8">
 
     <!-- Temperatures: responsive grid -->
     <div class="grid grid-cols-3 max-sm:grid-cols-1 divide-x max-sm:divide-x-0 max-sm:divide-y divide-white/10 -mx-7 lg:-mx-8">
-      <div class="px-7 lg:px-8">
+      <div class="px-7 lg:px-8 max-sm:py-3">
         <div class="t-title mb-3">Extruder</div>
         <div class="flex max-sm:flex-col max-sm:items-start items-baseline gap-1.5 max-sm:gap-0.5">
           <span class="text-[20px] sm:text-[28px] font-semibold tracking-tight tabular-nums" :style="{ color: tempColor(printer.extruderTemp, printer.extruderTarget) }">
@@ -73,7 +73,7 @@ const hasJob = computed(() => printer.isPrinting || printer.isPaused)
           <span v-if="printer.extruderTarget > 0" class="t-mute text-[10px] hidden max-sm:inline">→ {{ printer.extruderTarget.toFixed(0) }}°C</span>
         </div>
       </div>
-      <div class="px-7 lg:px-8">
+      <div class="px-7 lg:px-8 max-sm:py-3">
         <div class="t-title mb-3">Bed</div>
         <div class="flex max-sm:flex-col max-sm:items-start items-baseline gap-1.5 max-sm:gap-0.5">
           <span class="text-[20px] sm:text-[28px] font-semibold tracking-tight tabular-nums" :style="{ color: tempColor(printer.bedTemp, printer.bedTarget) }">
@@ -83,7 +83,7 @@ const hasJob = computed(() => printer.isPrinting || printer.isPaused)
           <span v-if="printer.bedTarget > 0" class="t-mute text-[10px] hidden max-sm:inline">→ {{ printer.bedTarget.toFixed(0) }}°C</span>
         </div>
       </div>
-      <div class="px-7 lg:px-8">
+      <div class="px-7 lg:px-8 max-sm:py-3 max-sm:pb-1">
         <div class="t-title mb-3">Chamber</div>
         <div class="flex max-sm:flex-col max-sm:items-start items-baseline gap-1.5 max-sm:gap-0.5">
           <span class="text-[20px] sm:text-[28px] font-semibold tracking-tight tabular-nums text-[var(--text-dim)]">
@@ -107,14 +107,14 @@ const hasJob = computed(() => printer.isPrinting || printer.isPaused)
             class="w-[11.2rem] h-[11.2rem] rounded-lg object-cover bg-[var(--bg-input)] border border-[var(--border)] transition-transform duration-200 sm:group-hover:scale-[2.5] sm:group-hover:z-30 sm:group-hover:shadow-2xl sm:group-hover:rounded-xl origin-left"
           />
         </div>
-        <div class="flex-1 min-w-0 flex flex-col justify-center gap-5">
-          <div class="flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start max-sm:gap-2">
-            <div class="min-w-0">
+        <div class="flex-1 min-w-0 flex flex-col justify-center gap-5 max-sm:w-full">
+          <div class="flex sm:items-end justify-between gap-6 max-sm:flex-col max-sm:gap-2">
+            <div class="flex-1 min-w-0">
               <div class="t-title mb-2">Print job</div>
-              <div class="relative min-w-0">
-                <div class="text-[16px] font-medium truncate select-none cursor-pointer" @click.stop="togglePill">{{ rawFname || 'Untitled job' }}</div>
+              <div class="relative">
+                <div class="text-[16px] font-medium select-none cursor-pointer truncate" @click.stop="togglePill">{{ rawFname || 'Untitled job' }}</div>
                 <div
-                  class="absolute bottom-full left-0 mb-2 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] text-[13px] font-normal leading-snug whitespace-normal break-all max-w-[320px] shadow-xl z-40 transition-opacity duration-150"
+                  class="absolute bottom-full left-0 mb-2 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] text-[13px] font-normal leading-snug whitespace-normal break-all max-w-[min(320px,calc(100vw-2.5rem))] shadow-xl z-40 transition-opacity duration-150"
                   :class="showPill ? 'opacity-100' : 'opacity-0 pointer-events-none'"
                 >{{ rawFname }}</div>
               </div>
