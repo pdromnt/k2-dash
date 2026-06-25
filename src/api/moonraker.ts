@@ -94,12 +94,22 @@ export async function getConfigFile(filePath: string): Promise<string> {
 }
 
 export async function saveConfigFile(filePath: string, content: string): Promise<void> {
-  // Moonraker expects the file part to carry only the filename and the
-  // `path` field to carry the subdirectory relative to the root. Sending
-  // the full path in both confuses the server and returns a 500.
-  const lastSlash = filePath.lastIndexOf('/')
-  const dir = lastSlash >= 0 ? filePath.slice(0, lastSlash) : ''
-  const filename = lastSlash >= 0 ? filePath.slice(lastSlash + 1) : filePath
+  // Moonraker's _parse_upload_args joins `path` (a directory) with the
+  // filename into the final destination, and _process_uploaded_file
+  // then mkdir's every segment of `path`. If path == filename (or any
+  // segment equals the filename) it tries to mkdir an existing file
+  // and crashes with NotADirectoryError → 500. So the rule is:
+  //   - filename  = basename only
+  //   - path      = subdirectory only, omitted when at the root
+  // Also strip a leading slash so we never send `path=/gcode_macro.cfg`.
+  const cleanPath = filePath.replace(/^\/+/, '')
+  const lastSlash = cleanPath.lastIndexOf('/')
+  const dir = lastSlash >= 0 ? cleanPath.slice(0, lastSlash) : ''
+  const filename = lastSlash >= 0 ? cleanPath.slice(lastSlash + 1) : cleanPath
+
+  if (!filename) {
+    throw new Error('Invalid config file path')
+  }
 
   const form = new FormData()
   form.append('file', new Blob([content], { type: 'text/plain' }), filename)
