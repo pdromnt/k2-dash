@@ -94,7 +94,7 @@ const heaters = computed(() => [
           v-if="printer.thumbnailUrl"
           :src="printer.thumbnailUrl"
           :alt="rawFname || 'Print preview'"
-          class="w-28 h-28 rounded-lg object-cover bg-[var(--bg-input)] border border-[var(--border)] shrink-0 transition-transform duration-200 sm:hover:scale-[2.5] sm:hover:z-30 sm:hover:shadow-2xl sm:hover:rounded-xl origin-left sm:cursor-pointer"
+          class="w-[11.2rem] h-[11.2rem] rounded-lg object-cover bg-[var(--bg-input)] border border-[var(--border)] shrink-0 transition-transform duration-200 sm:hover:scale-[2.5] sm:hover:z-30 sm:hover:shadow-2xl sm:hover:rounded-xl origin-left sm:cursor-pointer"
         />
         <div class="flex-1 min-w-0 flex flex-col justify-center gap-5 max-sm:w-full">
           <div class="flex sm:items-end justify-between gap-6 max-sm:flex-col max-sm:gap-2">

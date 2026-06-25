@@ -48,7 +48,7 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
       </div>
     </div>
 
-    <div v-if="hasSlots" class="grid gap-3 -mx-7 lg:-mx-8 px-7 lg:px-8 max-sm:pb-3"
+    <div v-if="hasSlots" class="grid gap-3 -mx-7 lg:-mx-8 px-7 lg:px-8 max-sm:pb-3 overflow-x-auto"
       :style="{ gridTemplateColumns: `repeat(${Math.min(printer.cfsSlots.length, 5)}, minmax(120px, 1fr))` }">
       <div
         v-for="s in printer.cfsSlots"
