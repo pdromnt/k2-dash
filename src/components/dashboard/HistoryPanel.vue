@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { getHistoryList, type HistoryJob } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
+import { usePrinterStore } from '@/stores/printer'
 import { fmtDur, fmtDate, fmtFilamentMeters, errMsg } from '@/utils/format'
 
 const jobs = ref<HistoryJob[]>([])
 const loading = ref(false)
 const banner = useBannerStore()
+const printer = usePrinterStore()
 
 const statusClass = (s: string) => {
   if (s === 'completed') return 'state-printing'
@@ -30,6 +32,19 @@ async function load() {
 }
 
 onMounted(load)
+
+// Refresh when a print transitions from active to done so an
+// "in_progress" job updates to completed / cancelled / error without
+// the user having to click Reload. Brief delay gives the printer a
+// moment to finalise the history record.
+watch(() => printer.state, (newState, oldState) => {
+  const wasActive = oldState === 'printing' || oldState === 'preparing' || oldState === 'paused'
+  const isInactive = newState === 'complete' || newState === 'cancelled'
+    || newState === 'error' || newState === 'idle'
+  if (wasActive && isInactive) {
+    setTimeout(load, 2000)
+  }
+})
 </script>
 
 <template>
