@@ -31,7 +31,7 @@ async function request<T>(
 
   const resp = await fetch(url, {
     ...options,
-    signal: AbortSignal.timeout(3000),
+    signal: AbortSignal.timeout(10000),
   })
 
   if (!resp.ok) {

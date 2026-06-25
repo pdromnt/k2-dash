@@ -46,7 +46,7 @@ function stateBadge(s: string) {
   return 'text-[var(--text-mute)]'
 }
 
-const hasJob = computed(() => (printer.isPrinting || printer.isPaused) && !!printer.printFilename)
+const hasJob = computed(() => printer.isPrinting || printer.isPaused)
 </script>
 
 <template>
