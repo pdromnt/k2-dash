@@ -66,11 +66,11 @@ const heaters = computed(() => [
       </span>
     </div>
 
-    <div class="flex-1 flex flex-col justify-center gap-4 max-sm:gap-4 lg:gap-5">
+    <div class="flex-1 flex flex-col justify-center gap-5 max-sm:gap-4 lg:gap-8">
 
     <!-- Temperatures: responsive grid -->
     <div class="stats-grid">
-      <div v-for="h in heaters" :key="h.label" class="stat-cell">
+      <div v-for="(h, i) in heaters" :key="h.label" class="stat-cell" :class="{ 'max-sm:pb-1': i === heaters.length - 1 }">
         <div class="t-title mb-3">{{ h.label }}</div>
         <div class="flex max-sm:flex-col max-sm:items-start items-baseline gap-1.5 max-sm:gap-0.5">
           <span class="text-[20px] sm:text-[28px] font-semibold tracking-tight tabular-nums"

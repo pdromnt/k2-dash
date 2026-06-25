@@ -37,6 +37,7 @@ export default tseslint.config(
         File: 'readonly',
         FormData: 'readonly',
         XMLHttpRequest: 'readonly',
+        requestAnimationFrame: 'readonly',
       },
     },
     rules: {

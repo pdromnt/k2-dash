@@ -1,7 +1,7 @@
 {
-  "name": "K2 Dash",
-  "short_name": "K2 Dash",
-  "description": "Real-time dashboard for the Creality K2 Plus 3D printer",
+  "name": "K2Dash",
+  "short_name": "K2Dash",
+  "description": "Real-time dashboard for the Creality K2 Plus 3D printer.",
   "start_url": ".",
   "display": "standalone",
   "orientation": "landscape",

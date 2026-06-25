@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, onUnmounted, onMounted } from 'vue'
+import { ref, nextTick, watch, onUnmounted, onMounted } from 'vue'
 import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
@@ -195,14 +195,6 @@ async function openFile(p: string) {
   changed.value = false
   newFileName.value = ''
   view.value = 'editor'
-  try {
-    const text = await getConfigFile(p)
-    await nextTick()
-    createEditor(text)
-  } catch (e) {
-    banner.show('Failed to read config', errMsg(e))
-    view.value = 'list'
-  }
 }
 
 function startNewFile() {
@@ -210,8 +202,28 @@ function startNewFile() {
   changed.value = false
   newFileName.value = ''
   view.value = 'editor'
-  nextTick(() => createEditor(''))
 }
+
+// Create the editor when the view flips to 'editor'. Awaiting nextTick
+// (and a frame, since <Transition> with mode="out-in" defers the new
+// view) guarantees editorHost is mounted before we hand it to CodeMirror.
+watch(view, async (v) => {
+  if (v !== 'editor' || editorView) return
+  await nextTick()
+  await new Promise(requestAnimationFrame)
+  if (!editorHost.value) return
+  if (selected.value) {
+    try {
+      const text = await getConfigFile(selected.value)
+      createEditor(text)
+    } catch (e) {
+      banner.show('Failed to read config', errMsg(e))
+      view.value = 'list'
+    }
+  } else {
+    createEditor('')
+  }
+})
 
 // Back from the editor → list. Confirm if there are unsaved changes.
 function cancel() {
@@ -289,7 +301,7 @@ onUnmounted(() => {
         <div v-if="view === 'list'" class="absolute inset-0 bg-black/70 backdrop-blur-sm modal-backdrop" @click="close"></div>
         <div v-else class="absolute inset-0 bg-black/70 modal-backdrop" aria-hidden="true"></div>
 
-        <Transition name="view" mode="out-in">
+        <Transition name="view">
           <!-- ── List view ── -->
           <div v-if="view === 'list'" key="list" class="relative flex flex-col w-full max-w-3xl h-[90vh] rounded-2xl card shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
@@ -431,11 +443,23 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-/* View swap: quick crossfade between list and editor. */
+/* View swap: slide the outgoing view left, the incoming view from the
+   right. Both views are in the DOM during the transition; the new
+   view sits on top so the slide reads as a horizontal page turn. */
 .view-enter-active, .view-leave-active {
-  transition: opacity 0.15s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
-.view-enter-from, .view-leave-to {
+.view-leave-active {
+  /* Outgoing view is absolute-positioned during its leave so the incoming
+     view can sit on top of the same slot. */
+  position: absolute; inset: 0;
+}
+.view-leave-to {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+.view-enter-from {
+  transform: translateX(24px);
   opacity: 0;
 }
 </style>

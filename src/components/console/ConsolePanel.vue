@@ -54,10 +54,6 @@ onMounted(() => { if (import.meta.env.VITE_PRINTER_HOST) connect() })
 
     <!-- Terminal -->
     <div ref="el" class="flex-1 min-h-0 term-panel p-5 overflow-y-auto font-mono text-[13px] leading-[1.7]">
-      <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-[var(--text-mute)]">
-        <p class="text-[13px] uppercase tracking-wider">Send a G‑code command to start the session</p>
-        <p class="text-[12px] uppercase mt-1">Live responses via WebSocket · HTTP fallback always available</p>
-      </div>
       <div v-for="m in messages" :key="m.id" class="flex items-start gap-3"
         :class="{
           'text-[var(--green)]': m.type === 'send',
