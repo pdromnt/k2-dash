@@ -1,4 +1,5 @@
 import { api } from './client'
+import { getUploadBaseUrl } from '@/utils/env'
 
 export async function checkConnection(): Promise<Record<string, unknown>> {
   return api.get('/api/version')
@@ -8,12 +9,8 @@ export async function uploadFileKlipper4408(
   file: File,
   onProgress?: (pct: number, speed: number) => void
 ): Promise<unknown> {
-  const baseUrl = import.meta.env.DEV
-    ? '/api/printer-upload'
-    : `http://${import.meta.env.VITE_PRINTER_HOST || '127.0.0.1'}:${import.meta.env.VITE_UPLOAD_PORT || '80'}`
-
   const filename = encodeURIComponent(file.name)
-  const url = `${baseUrl}/upload/${filename}`
+  const url = `${getUploadBaseUrl()}/upload/${filename}`
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()

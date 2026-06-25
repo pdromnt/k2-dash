@@ -6,6 +6,7 @@
   --bg-page: #0a0b0d;
   --bg-card: #1a1d22;
   --bg-input: #14161a;
+  --bg-terminal: #07080a;
   --border: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.18);
   --text: #e8eaed;
@@ -37,6 +38,19 @@ html, body, #app {
   border: 1px solid var(--border);
   border-radius: 14px;
 }
+
+/* ── Panel shell ────────────────────────────────────────── */
+/* The standard layout for every dashboard panel: card chrome,
+   consistent padding, vertical flex with gap. Add `h-full` on
+   the element for rows that share height with siblings. */
+.card-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.75rem;
+  display: flex; flex-direction: column; gap: 1.5rem;
+}
+@media (min-width: 1024px) { .card-panel { padding: 2rem; } }
 
 /* ── Typography ─────────────────────────────────────────── */
 .t-title  { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); }
@@ -97,7 +111,98 @@ html, body, #app {
 .progress::-webkit-progress-value { background: linear-gradient(90deg, #6d9129, #8baf34); border-radius: 99px; transition: width 0.3s ease; }
 .progress::-moz-progress-bar { background: linear-gradient(90deg, #6d9129, #8baf34); border-radius: 99px; }
 
-/* ── Status dot ─────────────────────────────────────────── */
+/* ── Divider ────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); }
+
+/* ── Empty / loading state inside a list ────────────────── */
+.empty-state {
+  padding: 4rem 0;
+  text-align: center;
+  color: var(--text-mute);
+}
+.empty-state .empty-message { font-size: 13px; color: var(--text-mute); }
+
+/* ── List row primitives ───────────────────────────────── */
+.row-title {
+  font-size: 14px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-meta {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 12px; color: var(--text-dim);
+  margin-top: 4px;
+}
+.list-row-hover { transition: background-color 0.15s ease; }
+.list-row-hover:hover { background: rgba(255,255,255,0.015); }
+
+/* ── Status dot ────────────────────────────────────────── */
+.status-dot {
+  width: 6px; height: 6px; border-radius: 9999px;
+  display: inline-block; flex-shrink: 0;
+}
+.status-dot.dot-pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* ── 3-col responsive stat grid ────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-left: -1.75rem; margin-right: -1.75rem;
+  border-color: rgba(255,255,255,0.1);
+}
+@media (min-width: 640px) {
+  .stats-grid { margin-left: -2rem; margin-right: -2rem; }
+}
+.stats-grid > * + * { border-left: 1px solid rgba(255,255,255,0.1); }
+@media (max-width: 639px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .stats-grid > * + * { border-left: 0; border-top: 1px solid rgba(255,255,255,0.1); }
+}
+.stat-cell { padding: 0 1.75rem; }
+@media (min-width: 640px) { .stat-cell { padding: 0 2rem; } }
+@media (max-width: 639px) {
+  .stat-cell { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+}
+
+/* ── Range slider (Controls panel) ─────────────────────── */
+.range-slider {
+  height: 0.375rem; border-radius: 9999px; appearance: none; -webkit-appearance: none;
+  background: rgba(255,255,255,0.08); cursor: pointer;
+}
+
+/* ── Jog button (Controls panel) ───────────────────────── */
+.jog-btn {
+  height: 3rem; border-radius: 0.5rem;
+  background: var(--bg-input); border: 1px solid var(--border-strong);
+  font-size: 14px; font-weight: 500;
+  transition: background-color 0.12s ease;
+}
+.jog-btn:hover { background: rgba(255,255,255,0.07); }
+.jog-btn.jog-home {
+  background: rgba(139,175,52,0.12); border-color: rgba(139,175,52,0.28);
+  color: var(--green); font-size: 18px;
+}
+.jog-btn.jog-home:hover { background: rgba(139,175,52,0.2); }
+
+/* ── Status badge colors (replaces inline :style) ─────── */
+.state-printing { color: var(--green); }
+.state-paused   { color: var(--amber); }
+.state-complete { color: var(--blue); }
+.state-error,
+.state-cancelled { color: var(--red); }
+.state-idle     { color: var(--text-mute); }
+
+/* ── Banner error / reconnection strip ─────────────────── */
+.banner-error {
+  background: rgba(224,85,85,0.1);
+  border-bottom: 1px solid rgba(224,85,85,0.2);
+  color: var(--red);
+}
+
+/* ── Terminal panels (console + config editor) ─────────── */
+.term-panel  { background: var(--bg-terminal); border: 1px solid var(--border); border-radius: 0.5rem; }
+.term-input  { background: var(--bg-input); border: 1px solid var(--border-strong); border-radius: 0.5rem; }
+
+/* ── Status dot ────────────────────────────────────────── */
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 .dot-pulse { animation: pulse 2s ease-in-out infinite; }
 
@@ -109,7 +214,7 @@ html, body, #app {
   border-radius: 50%;
   animation: spin .6s linear infinite;
 }
-.spinner-sm { width: 16px; height: 16px; border-width: 2px; }
+.spinner-sm { width: 16px; height: 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Scrollbar ──────────────────────────────────────────── */

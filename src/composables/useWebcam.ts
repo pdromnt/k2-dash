@@ -1,4 +1,5 @@
 import { ref, onUnmounted, shallowRef } from 'vue'
+import { getWebcamBaseUrl } from '@/utils/env'
 
 function encodeOffer(sdp: string): string {
   const json = JSON.stringify({ type: 'offer', sdp })
@@ -32,10 +33,7 @@ export function useWebcam() {
   let signalingUrl = ''
 
   function getSignalingUrl(): string {
-    if (import.meta.env.DEV) return '/api/printer-camera/call/webrtc_local'
-    const host = import.meta.env.VITE_PRINTER_HOST || '127.0.0.1'
-    const port = import.meta.env.VITE_WEBCAM_PORT || '8000'
-    return `http://${host}:${port}/call/webrtc_local`
+    return `${getWebcamBaseUrl()}/call/webrtc_local`
   }
 
   async function connect() {

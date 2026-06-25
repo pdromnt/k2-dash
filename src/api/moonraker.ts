@@ -53,9 +53,9 @@ export async function sendGcode(script: string): Promise<string> {
   return api.post("/printer/gcode/script", { script });
 }
 
-export async function getFileList(path = "gcodes"): Promise<FileInfo[]> {
+export async function getFileList(root = "gcodes"): Promise<FileInfo[]> {
   const data = await api.get<{ result: FileInfo[] }>(
-    `/server/files/list?root=${path}`,
+    `/server/files/list?root=${root}`,
   );
   return data.result || [];
 }
@@ -86,8 +86,7 @@ export async function getHistoryList(): Promise<HistoryList> {
 }
 
 export async function getConfigFiles(): Promise<FileInfo[]> {
-  const data = await api.get<{ result: FileInfo[] }>("/server/files/list?root=config");
-  return data.result || [];
+  return getFileList('config')
 }
 
 export async function getConfigFile(filePath: string): Promise<string> {
@@ -95,18 +94,11 @@ export async function getConfigFile(filePath: string): Promise<string> {
 }
 
 export async function saveConfigFile(filePath: string, content: string): Promise<void> {
-  const host = import.meta.env.VITE_PRINTER_HOST || '127.0.0.1'
-  const port = import.meta.env.VITE_API_PORT || '7125'
-  const baseUrl = import.meta.env.DEV ? '/api/moonraker' : `http://${host}:${port}`
   const form = new FormData()
   form.append('file', new Blob([content], { type: 'text/plain' }), filePath)
   form.append('root', 'config')
   form.append('path', filePath)
-  await fetch(`${baseUrl}/server/files/upload`, {
-    method: 'POST',
-    body: form,
-    signal: AbortSignal.timeout(15000),
-  })
+  await api.upload('/server/files/upload', form, 15000)
 }
 
 export async function deleteConfigFile(filePath: string): Promise<string> {

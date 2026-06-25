@@ -1,8 +1,38 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 
+export type PrinterState = 'unknown' | 'idle' | 'printing' | 'paused' | 'complete' | 'preparing' | 'ready' | 'error' | 'cancelled' | 'shutdown'
+
+export interface CfsSlot {
+  boxId: number
+  materialId: number
+  type: string
+  color: string
+  name: string
+  vendor: string
+  percent: number
+  minTemp: number
+  maxTemp: number
+  state: number
+  isSpool: boolean
+}
+
+export interface TimelapseFile {
+  name: string
+  path: string
+  size: number
+  time: number
+}
+
+// Klipper `output_pin fan{N}` → store field for fans that accept a 0-1 value.
+const FAN_PINS = [
+  { pin: 'fan0', field: 'fanPart' as const },
+  { pin: 'fan1', field: 'fanAux' as const },
+  { pin: 'fan2', field: 'fanChamber' as const },
+]
+
 export const usePrinterStore = defineStore('printer', () => {
-  const state = ref('unknown')
+  const state = ref<PrinterState>('unknown')
   const printProgress = ref(0)
   const printFilename = ref('')
   const currentLayer = ref(0)
@@ -23,40 +53,25 @@ export const usePrinterStore = defineStore('printer', () => {
   const filamentEstimatedWeight = ref(0)
   const printLeftTime = ref(0)
   const thumbnailUrl = ref('')
-  const _fileList = ref<Array<Record<string, unknown>>>([])
   const wsActive = ref(false)
   const cfsName = ref('')
   const cfsHumidity = ref<number | null>(null)
   const cfsTemp = ref<number | null>(null)
-  const cfsSlots = ref<Array<{
-    boxId: number
-    materialId: number
-    type: string
-    color: string
-    name: string
-    vendor: string
-    percent: number
-    minTemp: number
-    maxTemp: number
-    state: number
-    isSpool: boolean
-  }>>([])
-  const timelapseFiles = ref<Array<{ name: string; path: string; size: number; time: number }>>([])
+  const cfsSlots = ref<CfsSlot[]>([])
+  const timelapseFiles = ref<TimelapseFile[]>([])
   const position = ref({ x: 0, y: 0, z: 0 })
   const filamentUsed = ref(0)
 
-  const isPrinting = computed(() =>
-    state.value === 'printing' || state.value === 'preparing'
-  )
+  const isPrinting = computed(() => state.value === 'printing' || state.value === 'preparing')
   const isPaused = computed(() => state.value === 'paused')
   const isReady = computed(() => state.value === 'ready')
-  const isError = computed(() =>
-    state.value === 'error' || state.value === 'shutdown'
-  )
+  const isError = computed(() => state.value === 'error' || state.value === 'shutdown')
 
-  const jobStates = new Set(['printing', 'preparing', 'paused'])
+  // Whenever the printer leaves an active-job state, wipe all the job-scoped
+  // data so a stale value from a previous run can't leak into the UI.
+  const JOB_STATES = new Set<PrinterState>(['printing', 'preparing', 'paused'])
   watch(state, (s) => {
-    if (!jobStates.has(s)) {
+    if (!JOB_STATES.has(s)) {
       printProgress.value = 0
       printFilename.value = ''
       currentLayer.value = 0
@@ -73,7 +88,7 @@ export const usePrinterStore = defineStore('printer', () => {
   function updateFromData(data: Record<string, unknown>) {
     if (data.print_stats) {
       const ps = data.print_stats as Record<string, unknown>
-      if (!wsActive.value && typeof ps.state === 'string') state.value = ps.state
+      if (!wsActive.value && typeof ps.state === 'string') state.value = ps.state as PrinterState
       if (typeof ps.filename === 'string' && ps.filename) printFilename.value = ps.filename
       if (typeof ps.print_duration === 'number') printDuration.value = ps.print_duration
       if (typeof ps.filament_used === 'number') filamentUsed.value = ps.filament_used
@@ -116,19 +131,17 @@ export const usePrinterStore = defineStore('printer', () => {
       }
     }
 
-    if (!wsActive.value && data['output_pin fan0']) {
-      const f = data['output_pin fan0'] as Record<string, unknown>
-      if (typeof f.value === 'number') fanPart.value = f.value
-    }
-
-    if (!wsActive.value && data['output_pin fan1']) {
-      const f = data['output_pin fan1'] as Record<string, unknown>
-      if (typeof f.value === 'number') fanAux.value = f.value
-    }
-
-    if (!wsActive.value && data['output_pin fan2']) {
-      const f = data['output_pin fan2'] as Record<string, unknown>
-      if (typeof f.value === 'number') fanChamber.value = f.value
+    for (const { pin, field } of FAN_PINS) {
+      if (!wsActive.value && data[`output_pin ${pin}`]) {
+        const f = data[`output_pin ${pin}`] as Record<string, unknown>
+        if (typeof f.value === 'number') {
+          // Mirror to the right ref — use a tiny lookup so the loop stays
+          // data-driven without losing the per-field type.
+          if (field === 'fanPart') fanPart.value = f.value
+          else if (field === 'fanAux') fanAux.value = f.value
+          else if (field === 'fanChamber') fanChamber.value = f.value
+        }
+      }
     }
 
     if (!wsActive.value && data['output_pin LED']) {
@@ -153,7 +166,7 @@ export const usePrinterStore = defineStore('printer', () => {
     fanPart, fanAux, fanChamber, ledState,
     connected, filamentEstimated, filamentEstimatedWeight, printLeftTime, thumbnailUrl,
     cfsName, cfsHumidity, cfsTemp, cfsSlots, timelapseFiles,
-    _fileList, wsActive,
+    wsActive,
     position, filamentUsed,
     isPrinting, isPaused, isReady, isError,
     updateFromData,

@@ -7,7 +7,7 @@ const banner = useBannerStore()
 <template>
   <div
     v-if="banner.banners.length > 0"
-    class="shrink-0 border-b border-[rgba(224,85,85,0.2)] bg-[rgba(224,85,85,0.08)]"
+    class="shrink-0 banner-error"
   >
     <div class="max-w-[1800px] mx-auto px-6 lg:px-10 py-3 flex flex-col gap-2">
       <div

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export interface Banner {
+interface Banner {
   id: number
   title: string
   detail?: string

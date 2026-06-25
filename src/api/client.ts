@@ -1,3 +1,5 @@
+import { getMoonrakerBaseUrl } from '@/utils/env'
+
 class ApiError extends Error {
   status: number
   body: string
@@ -9,29 +11,17 @@ class ApiError extends Error {
   }
 }
 
-const HOST = import.meta.env.VITE_PRINTER_HOST || '127.0.0.1'
-const API_PORT = import.meta.env.VITE_API_PORT || '7125'
-
-/**
- * Base URL for the Moonraker REST API.
- * Dev: routed through the Vite proxy (configured in vite.config.ts) to avoid CORS.
- * Prod: direct connection to the printer — requires the dashboard to be served
- *       from a host that can reach the printer on the LAN.
- */
-function getBaseUrl(): string {
-  if (import.meta.env.DEV) return '/api/moonraker'
-  return `http://${HOST}:${API_PORT}`
-}
+const REQUEST_TIMEOUT_MS = 10000
 
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${getBaseUrl()}${path}`
+  const url = `${getMoonrakerBaseUrl()}${path}`
 
   const resp = await fetch(url, {
     ...options,
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
 
   if (!resp.ok) {
@@ -63,5 +53,21 @@ export const api = {
   },
   delete<T>(path: string) {
     return request<T>(path, { method: 'DELETE' })
+  },
+  /**
+   * Multipart upload (used by the Klipper config editor to PUT files).
+   * Bypasses the JSON encoding of `post` and lets the caller supply a FormData body.
+   */
+  async upload<T = unknown>(path: string, form: FormData, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
+    const resp = await fetch(`${getMoonrakerBaseUrl()}${path}`, {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '')
+      throw new ApiError(`HTTP ${resp.status}: ${resp.statusText}`, resp.status, body)
+    }
+    return resp.json().catch(() => undefined) as T
   },
 }

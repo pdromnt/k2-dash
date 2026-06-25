@@ -2,23 +2,21 @@
 import { ref, onMounted } from 'vue'
 import { getHistoryList, type HistoryJob } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
-import { fmtDur, fmtDate, errMsg } from '@/utils/format'
+import { fmtDur, fmtDate, fmtFilamentMeters, errMsg } from '@/utils/format'
 
 const jobs = ref<HistoryJob[]>([])
 const loading = ref(false)
 const banner = useBannerStore()
 
-function statusColor(s: string) {
-  if (s === 'completed') return 'var(--green)'
-  if (s === 'in_progress') return 'var(--text)'
-  if (s === 'cancelled') return 'var(--amber)'
-  if (s === 'error') return 'var(--red)'
-  return 'var(--text-mute)'
+const statusClass = (s: string) => {
+  if (s === 'completed') return 'state-printing'
+  if (s === 'in_progress') return 'text-[var(--text)]'
+  if (s === 'cancelled') return 'state-paused'
+  if (s === 'error') return 'state-error'
+  return 'state-idle'
 }
 
-function fmtStatus(s: string) {
-  return s.replace(/_/g, ' ')
-}
+const fmtStatus = (s: string) => s.replace(/_/g, ' ')
 
 async function load() {
   loading.value = true
@@ -35,12 +33,12 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-6 overflow-hidden">
+  <div class="card-panel h-full">
     <div class="flex items-center justify-between">
       <div class="t-title">History</div>
       <div class="flex items-center gap-3">
         <span v-if="!loading && jobs.length > 0" class="t-mute font-mono">{{ jobs.length }} jobs</span>
-        <button class="btn btn-ghost btn-sm" @click="load" :disabled="loading" aria-label="Reload">
+        <button class="btn btn-ghost btn-sm" @click="load" :disabled="loading" aria-label="Reload history">
           <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -49,25 +47,25 @@ onMounted(load)
     </div>
 
     <div class="max-h-[380px] -mx-7 lg:-mx-8 overflow-y-auto">
-      <div v-if="loading" class="px-7 lg:px-8 py-16 text-center text-[var(--text-mute)]">
+      <div v-if="loading" class="empty-state">
         <span class="spinner"></span>
         <p class="mt-3 t-mute">Loading…</p>
       </div>
 
-      <div v-else-if="jobs.length === 0" class="px-7 lg:px-8 py-16 text-center text-[var(--text-mute)]">
+      <div v-else-if="jobs.length === 0" class="empty-state">
         <p class="text-[13px]">No history yet</p>
       </div>
 
       <ul v-else class="divide-y divide-[var(--border)]">
-        <li v-for="j in jobs" :key="j.job_id" class="px-7 lg:px-8 py-5 hover:bg-white/[0.015] transition-colors">
+        <li v-for="j in jobs" :key="j.job_id" class="px-7 lg:px-8 py-5 list-row-hover">
           <div class="flex items-center gap-4">
             <div class="flex-1 min-w-0">
-              <div class="text-[14px] font-medium truncate" :title="j.filename">{{ j.filename }}</div>
-              <div class="t-mono text-[12px] mt-1">
-                {{ fmtDate(j.start_time) }} · {{ fmtDur(j.print_duration) }} · {{ (j.filament_used / 1000).toFixed(1) }}m
+              <div class="row-title" :title="j.filename">{{ j.filename }}</div>
+              <div class="row-meta">
+                {{ fmtDate(j.start_time) }} · {{ fmtDur(j.print_duration) }} · {{ fmtFilamentMeters(j.filament_used) }}
               </div>
             </div>
-            <span class="text-[11px] font-semibold uppercase tracking-wider" :style="{ color: statusColor(j.status) }">
+            <span class="text-[11px] font-semibold uppercase tracking-wider" :class="statusClass(j.status)">
               {{ fmtStatus(j.status) }}
             </span>
           </div>

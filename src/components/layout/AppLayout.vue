@@ -16,31 +16,9 @@ const connectionBanner = ref('')
 let offlineSince: number | null = null
 let tickTimer: ReturnType<typeof setInterval> | null = null
 
-// Reactive connection monitoring — WS is the primary health signal
-watch(() => printerWs.connected.value, (wsOk) => {
-  if (wsOk) {
-    showOffline.value = false
-    offlineSince = null
-    connectionBanner.value = ''
-    if (tickTimer) { clearInterval(tickTimer); tickTimer = null }
-    if (!everConnected.value) everConnected.value = true
-    return
-  }
-
-  // WS dropped — start counting
-  if (offlineSince === null) {
-    offlineSince = Date.now()
-    // Tick every second to update the counter
-    if (!tickTimer) {
-      tickTimer = setInterval(() => {
-        if (offlineSince === null) return
-        const secs = Math.round((Date.now() - offlineSince) / 1000)
-        if (!everConnected.value && secs > 15) showOffline.value = true
-        if (everConnected.value && secs > 4) connectionBanner.value = `Connection lost — reconnecting (${secs}s)`
-      }, 1000)
-    }
-  }
-}, { immediate: true })
+const OFFLINE_AFTER_MS = 15_000
+const RECONNECT_BANNER_AFTER_MS = 4_000
+const TICK_MS = 1_000
 
 const stateColor = computed(() => {
   if (showOffline.value) return 'var(--text-mute)'
@@ -54,7 +32,7 @@ const stateColor = computed(() => {
 const stateLabel = computed(() => {
   if (showOffline.value) return 'OFFLINE'
   // WS is primary — if it drops, we're reconnecting regardless of HTTP
-  if (!printerWs.connected.value) return 'RECONNECTING'
+  if (!printerWs.connected) return 'RECONNECTING'
   return printer.isPrinting ? 'PRINTING'
     : printer.isPaused ? 'PAUSED'
     : printer.isError ? 'ERROR'
@@ -62,6 +40,32 @@ const stateLabel = computed(() => {
     : printer.connected ? 'CONNECTED'
     : 'OFFLINE'
 })
+
+// Reactive connection monitoring — WS is the primary health signal
+watch(() => printerWs.connected, (wsOk) => {
+  if (wsOk) {
+    showOffline.value = false
+    offlineSince = null
+    connectionBanner.value = ''
+    if (tickTimer) { clearInterval(tickTimer); tickTimer = null }
+    if (!everConnected.value) everConnected.value = true
+    return
+  }
+
+  if (offlineSince === null) {
+    offlineSince = Date.now()
+    if (!tickTimer) {
+      tickTimer = setInterval(() => {
+        if (offlineSince === null) return
+        const secs = Math.round((Date.now() - offlineSince) / 1000)
+        if (!everConnected.value && secs * 1000 > OFFLINE_AFTER_MS) showOffline.value = true
+        if (everConnected.value && secs * 1000 > RECONNECT_BANNER_AFTER_MS) {
+          connectionBanner.value = `Connection lost — reconnecting (${secs}s)`
+        }
+      }, TICK_MS)
+    }
+  }
+}, { immediate: true })
 
 onMounted(async () => {
   try {
@@ -84,7 +88,7 @@ onMounted(async () => {
         </div>
         <div class="h-5 w-px bg-[var(--border-strong)]"></div>
         <div class="flex items-center gap-2.5">
-          <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: stateColor }"></span>
+          <span class="status-dot w-2 h-2" :style="{ backgroundColor: stateColor }"></span>
           <span class="text-[13px] font-medium" :style="{ color: stateColor }">{{ stateLabel }}</span>
         </div>
       </div>
@@ -102,7 +106,7 @@ onMounted(async () => {
 
     <!-- ── Banners ── -->
     <AppBanner />
-    <div v-if="connectionBanner" class="shrink-0 px-6 py-2.5 text-[13px] font-medium text-center bg-[rgba(224,85,85,0.1)] border-b border-[rgba(224,85,85,0.2)] text-[var(--red)]">
+    <div v-if="connectionBanner" class="shrink-0 px-6 py-2.5 text-[13px] font-medium text-center banner-error">
       {{ connectionBanner }}
     </div>
 

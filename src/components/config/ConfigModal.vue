@@ -3,7 +3,7 @@ import { ref, nextTick, watch, onUnmounted } from 'vue'
 import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
-import { errMsg } from '@/utils/format'
+import { errMsg, fmtSize } from '@/utils/format'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { StreamLanguage, syntaxHighlighting, HighlightStyle } from '@codemirror/language'
@@ -235,16 +235,16 @@ watch(show, (v) => { if (!v) { selected.value = ''; destroyEditor() } })
     <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-6">
       <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="show = false"></div>
 
-      <div class="relative flex w-full max-w-6xl h-[90vh] rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-2xl overflow-hidden">
+      <div class="relative flex w-full max-w-6xl h-[90vh] rounded-2xl card shadow-2xl overflow-hidden">
         <!-- Sidebar: file tree -->
         <div class="w-60 lg:w-72 shrink-0 flex flex-col border-r border-[var(--border)]">
           <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
             <div class="t-title">Files</div>
             <div class="flex items-center gap-1">
-              <button class="btn btn-ghost btn-sm !h-7 !px-2 text-[12px]" @click="loadFiles" :disabled="loading" title="Reload">
+              <button class="btn btn-ghost btn-sm !h-7 !px-2 text-[12px]" @click="loadFiles" :disabled="loading" aria-label="Reload" title="Reload">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </button>
-              <button class="btn btn-ghost btn-sm !h-7 !px-2 text-[12px]" @click="newFile" title="New file">
+              <button class="btn btn-ghost btn-sm !h-7 !px-2 text-[12px]" @click="newFile" aria-label="New file" title="New file">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
               </button>
             </div>
@@ -276,11 +276,12 @@ watch(show, (v) => { if (!v) { selected.value = ''; destroyEditor() } })
                           <span class="text-[13px] leading-none shrink-0">📄</span>
                           <span class="truncate font-medium">{{ sub.name }}</span>
                         </div>
-                        <div class="t-mono text-[10px] mt-0.5 ml-[25px]">{{ ((sub.size ?? 0) / 1024).toFixed(1) }} KB</div>
+                        <div class="t-mono text-[10px] mt-0.5 ml-[25px]">{{ fmtSize(sub.size ?? 0) }}</div>
                       </button>
                       <button
                         class="shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100"
                         @click="delFile(sub.path)"
+                        aria-label="Delete"
                         title="Delete"
                       >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -301,11 +302,12 @@ watch(show, (v) => { if (!v) { selected.value = ''; destroyEditor() } })
                       <span class="text-[13px] leading-none shrink-0">📄</span>
                       <span class="truncate font-medium">{{ entry.name }}</span>
                     </div>
-                    <div class="t-mono text-[10px] mt-0.5 ml-[25px]">{{ ((entry.size ?? 0) / 1024).toFixed(1) }} KB</div>
+                    <div class="t-mono text-[10px] mt-0.5 ml-[25px]">{{ fmtSize(entry.size ?? 0) }}</div>
                   </button>
                   <button
                     class="shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100"
                     @click="delFile(entry.path)"
+                    aria-label="Delete"
                     title="Delete"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

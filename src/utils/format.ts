@@ -18,6 +18,11 @@ export function splitPath(p: string) {
   return p.split('/').pop() || p
 }
 
+/** Convert filament length stored in mm to a human-readable meters string. */
+export function fmtFilamentMeters(mm: number) {
+  return `${(mm / 1000).toFixed(1)}m`
+}
+
 export function errMsg(e: unknown): string | undefined {
   return e instanceof Error ? e.message : undefined
 }

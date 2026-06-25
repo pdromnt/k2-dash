@@ -1,55 +1,58 @@
 import { ref, onUnmounted } from 'vue'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
+import { usePrinterWs } from '@/composables/usePrinterWs'
 import { sendGcode } from '@/api/moonraker'
 import { errMsg } from '@/utils/format'
 
-export interface ConsoleMessage {
+interface ConsoleMessage {
   id: number
   type: 'send' | 'recv' | 'system'
   text: string
   timestamp: number
 }
 
+const MAX_MESSAGES = 500
+const TRIM_TO = 300
+
 export function useConsole() {
   const banner = useBannerStore()
   const toast = useToastStore()
+  const printerWs = usePrinterWs()
   const messages = ref<ConsoleMessage[]>([])
   const connected = ref(false)
   let msgId = 0
+  let unsubscribe: (() => void) | null = null
 
   function addMessage(type: ConsoleMessage['type'], text: string) {
     messages.value.push({ id: msgId++, type, text, timestamp: Date.now() })
-    if (messages.value.length > 500) {
-      messages.value = messages.value.slice(-300)
+    if (messages.value.length > MAX_MESSAGES) {
+      messages.value = messages.value.slice(-TRIM_TO)
     }
   }
 
-  function onWsMessage(event: MessageEvent) {
-    try {
-      const msg = JSON.parse(event.data)
+  function connect() {
+    if (unsubscribe) return // already connected
+
+    if (window.__printerWs?.readyState === WebSocket.OPEN) {
+      connected.value = true
+      addMessage('system', 'Console Status: Ready.')
+    }
+
+    // Subscribe through the WS composable's pub/sub so we don't open a
+    // second message listener on the same socket.
+    unsubscribe = printerWs.onMessage((msg) => {
       if (msg.gcodeRes) {
         addMessage('recv', typeof msg.gcodeRes === 'string' ? msg.gcodeRes : JSON.stringify(msg.gcodeRes))
       }
       if (msg.gcode_response) {
-        addMessage('recv', msg.gcode_response)
+        addMessage('recv', msg.gcode_response as string)
       }
-    } catch { /* ignore */ }
-  }
-
-  function connect() {
-    if (!import.meta.env.VITE_PRINTER_HOST) return
-    const sock = window.__printerWs
-    if (sock?.readyState === WebSocket.OPEN) {
-      connected.value = true
-      sock.addEventListener('message', onWsMessage)
-      addMessage('system', 'Console Status: Ready.')
-    }
+    })
   }
 
   function disconnect() {
-    const sock = window.__printerWs
-    if (sock) sock.removeEventListener('message', onWsMessage)
+    if (unsubscribe) { unsubscribe(); unsubscribe = null }
     connected.value = false
   }
 
@@ -82,5 +85,5 @@ export function useConsole() {
 
   onUnmounted(() => disconnect())
 
-  return { messages, connected, connect, disconnect, sendCommand, clear }
+  return { messages, connected, connect, sendCommand, clear }
 }

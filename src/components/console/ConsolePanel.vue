@@ -38,12 +38,12 @@ onMounted(() => { if (import.meta.env.VITE_PRINTER_HOST) connect() })
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-6 h-full min-h-[420px]">
+  <div class="card-panel h-full">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="t-title">Console</div>
         <div class="flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-[var(--green)]' : 'bg-[var(--text-mute)]'"></span>
+          <span class="status-dot" :class="connected ? 'bg-[var(--green)]' : 'bg-[var(--text-mute)]'"></span>
           <span class="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-mute)]">
             {{ connected ? 'Live' : 'HTTP' }}
           </span>
@@ -53,7 +53,7 @@ onMounted(() => { if (import.meta.env.VITE_PRINTER_HOST) connect() })
     </div>
 
     <!-- Terminal -->
-    <div class="flex-1 min-h-0 bg-[#07080a] border border-[var(--border)] rounded-lg p-5 overflow-y-auto font-mono text-[13px] leading-[1.7]">
+    <div ref="el" class="flex-1 min-h-0 term-panel p-5 overflow-y-auto font-mono text-[13px] leading-[1.7]">
       <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-[var(--text-mute)]">
         <p class="text-[13px] uppercase tracking-wider">Send a G‑code command to start the session</p>
         <p class="text-[12px] uppercase mt-1">Live responses via WebSocket · HTTP fallback always available</p>
@@ -73,12 +73,13 @@ onMounted(() => { if (import.meta.env.VITE_PRINTER_HOST) connect() })
     </div>
 
     <!-- Input -->
-    <div class="flex items-center gap-3 bg-[var(--bg-input)] border border-[var(--border-strong)] rounded-lg px-5 py-3.5">
+    <div class="flex items-center gap-3 term-input px-5 py-3.5">
       <span class="text-[var(--green)] font-mono text-[14px] select-none shrink-0">›</span>
       <input
         v-model="input"
         class="flex-1 bg-transparent border-0 outline-none font-mono text-[14px] text-[var(--text)] placeholder:text-[var(--text-mute)]"
         placeholder="TYPE G‑CODE COMMAND…"
+        aria-label="G-code command"
         @keydown="kd"
       />
       <button class="btn btn-primary btn-sm" :disabled="!input.trim()" @click="send">Send</button>

@@ -4,18 +4,17 @@ import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
 import { computed } from 'vue'
 import { fmtSize, fmtDate } from '@/utils/format'
+import { HOST } from '@/utils/env'
 
 const printer = usePrinterStore()
 const banner = useBannerStore()
 const toast = useToastStore()
 
-const host = import.meta.env.VITE_PRINTER_HOST || ''
-
 const hasFiles = computed(() => printer.timelapseFiles.length > 0)
 
 function downloadUrl(file: { path: string; name: string }) {
   const p = file.path || file.name
-  return `http://${host}/download/${encodeURIComponent(p)}`
+  return `http://${HOST}/download/${encodeURIComponent(p)}`
 }
 
 async function deleteTimelapse(file: { name: string }) {
@@ -34,24 +33,22 @@ async function deleteTimelapse(file: { name: string }) {
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-6">
-    <div class="flex items-center justify-between">
-      <div class="t-title">Timelapse</div>
-    </div>
+  <div class="card-panel">
+    <div class="t-title">Timelapse</div>
 
     <div v-if="hasFiles" class="-mx-7 lg:-mx-8">
       <ul class="divide-y divide-[var(--border)]">
-        <li v-for="f in printer.timelapseFiles" :key="f.name" class="px-7 lg:px-8 py-4 flex items-center gap-4 hover:bg-white/[0.015] transition-colors group">
+        <li v-for="f in printer.timelapseFiles" :key="f.name" class="px-7 lg:px-8 py-4 flex items-center gap-4 list-row-hover group">
           <svg class="w-8 h-8 text-[var(--text-mute)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
           <div class="flex-1 min-w-0">
-            <div class="text-[14px] font-medium truncate">{{ f.name }}</div>
-            <div class="t-mono text-[12px] mt-1">
+            <div class="row-title">{{ f.name }}</div>
+            <div class="row-meta">
               {{ fmtSize(f.size) }}<span v-if="f.time"> · {{ fmtDate(f.time) }}</span>
             </div>
           </div>
-          <a :href="downloadUrl(f)" target="_blank" class="btn btn-sm">Download</a>
+          <a :href="downloadUrl(f)" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Download</a>
           <button class="btn btn-danger btn-sm" @click="deleteTimelapse(f)">Delete</button>
         </li>
       </ul>

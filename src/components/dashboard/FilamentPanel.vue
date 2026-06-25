@@ -23,9 +23,9 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
 </script>
 
 <template>
-  <div class="card p-7 lg:p-8 flex flex-col gap-6">
-    <div class="flex items-center justify-between gap-3 flex-wrap">
-      <div class="flex items-center gap-3 flex-wrap">
+  <div class="card-panel">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
         <div class="t-title">Filaments</div>
         <span v-if="printer.cfsName" class="text-[10px] font-medium text-[var(--text-mute)] uppercase tracking-wider">
           {{ printer.cfsName }}
@@ -33,23 +33,23 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
       </div>
       <div v-if="printer.cfsHumidity !== null || printer.cfsTemp !== null" class="inline-flex items-stretch rounded-lg border border-[var(--border)] bg-[var(--bg-input)] overflow-hidden">
         <span class="flex items-center px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-r border-[var(--border)] text-[var(--text-mute)]">CFS 1</span>
-          <span v-if="printer.cfsHumidity !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
-            💧 {{ printer.cfsHumidity }}%
+        <span v-if="printer.cfsHumidity !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
+          💧 {{ printer.cfsHumidity }}%
         </span>
         <span v-if="printer.cfsTemp !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
           🌡️ {{ printer.cfsTemp }}°C
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <span v-if="hasSlots" class="w-2 h-2 rounded-full bg-[var(--green)]"></span>
+        <span v-if="hasSlots" class="status-dot w-2 h-2 bg-[var(--green)]"></span>
         <span class="text-[12px] font-medium" :class="hasSlots ? 'text-[var(--green)]' : 'text-[var(--text-mute)]'">
           {{ hasSlots ? loadedCount + ' LOADED' : 'NO FILAMENT' }}
         </span>
       </div>
     </div>
 
-    <div v-if="hasSlots" class="overflow-x-auto -mx-7 lg:-mx-8 px-7 lg:px-8 max-sm:pb-3">
-      <div class="grid gap-3" :style="{ gridTemplateColumns: `repeat(${Math.min(printer.cfsSlots.length, 5)}, minmax(120px, 1fr))` }">
+    <div v-if="hasSlots" class="grid gap-3 -mx-7 lg:-mx-8 px-7 lg:px-8 max-sm:pb-3"
+      :style="{ gridTemplateColumns: `repeat(${Math.min(printer.cfsSlots.length, 5)}, minmax(120px, 1fr))` }">
       <div
         v-for="s in printer.cfsSlots"
         :key="`${s.boxId}-${s.materialId}`"
@@ -63,7 +63,7 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
         ></div>
 
         <span class="text-[11px] font-semibold text-center leading-tight" :class="s.type ? 'text-[var(--text-dim)]' : 'text-[var(--text-mute)]'">
-          {{ s.isSpool ? 'Spool' : `CFS ${s.boxId}‑${s.materialId + 1}` }}
+          {{ s.isSpool ? 'Spool' : `CFS ${s.boxId}-${s.materialId + 1}` }}
         </span>
 
         <span v-if="s.type" class="text-[10px] font-semibold text-[var(--green)] uppercase tracking-wider">
@@ -78,7 +78,6 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
         <span v-if="s.minTemp > 0" class="text-[10px] font-mono text-[var(--text-mute)]">
           {{ s.minTemp }}–{{ s.maxTemp }}°C
         </span>
-      </div>
       </div>
     </div>
 

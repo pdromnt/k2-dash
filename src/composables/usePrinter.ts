@@ -1,6 +1,7 @@
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { onMounted, onUnmounted, watch } from "vue";
 import { usePrinterStore } from "@/stores/printer";
 import { queryPrinterObjects } from "@/api/moonraker";
+import { getMoonrakerBaseUrl } from "@/utils/env";
 
 const FULL_QUERY = {
   print_stats: null,
@@ -16,15 +17,18 @@ const FULL_QUERY = {
   motion_report: ["live_position"],
 };
 
+const POLL_INTERVAL_MS = 2000
+const MIN_POLL_GAP_MS = 800
+const THUMBNAIL_TIMEOUT_MS = 5000
+
 export function usePrinter() {
   const store = usePrinterStore();
-  const pollTimer = ref<ReturnType<typeof setInterval>>();
-
+  let pollTimer: ReturnType<typeof setInterval> | undefined
   let lastPoll = 0
 
   async function pollStatus() {
     const now = Date.now()
-    if (now - lastPoll < 800) return
+    if (now - lastPoll < MIN_POLL_GAP_MS) return
     lastPoll = now
     try {
       const data = await queryPrinterObjects(FULL_QUERY);
@@ -39,11 +43,9 @@ export function usePrinter() {
 
   async function fetchThumbnail(filename: string) {
     try {
-      const host = import.meta.env.VITE_PRINTER_HOST || '127.0.0.1'
-      const baseUrl = import.meta.env.DEV ? '/api/moonraker' : `http://${host}:7125`
-      const resp = await fetch(`${baseUrl}/server/files/gcodes/${encodeURIComponent(filename)}`, {
+      const resp = await fetch(`${getMoonrakerBaseUrl()}/server/files/gcodes/${encodeURIComponent(filename)}`, {
         headers: { Range: 'bytes=0-80000' },
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(THUMBNAIL_TIMEOUT_MS),
       })
       const text = await resp.text()
       // Parse thumbnail block: ; thumbnail begin WxH SIZE\n; base64data...
@@ -59,13 +61,13 @@ export function usePrinter() {
 
   function startPolling() {
     stopPolling();
-    pollTimer.value = setInterval(pollStatus, 2000);
+    pollTimer = setInterval(pollStatus, POLL_INTERVAL_MS);
   }
 
   function stopPolling() {
-    if (pollTimer.value) {
-      clearInterval(pollTimer.value);
-      pollTimer.value = undefined;
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = undefined;
     }
   }
 
