@@ -1,25 +1,12 @@
 <script setup lang="ts">
 import { usePrinterStore } from '@/stores/printer'
-import { computed, ref, onMounted, onUpdated, useTemplateRef } from 'vue'
+import { computed } from 'vue'
 
 const printer = usePrinterStore()
 
 const hasSlots = computed(() => printer.cfsSlots.length > 0)
 
 const loadedCount = computed(() => printer.cfsSlots.filter(s => s.type).length)
-
-const scrollEl = useTemplateRef<HTMLElement>('scrollEl')
-const canScrollRight = ref(false)
-
-function updateScroll() {
-  const el = scrollEl.value
-  if (!el) return
-  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
-}
-
-onMounted(updateScroll)
-// cfsSlots is populated asynchronously by the WS; re-check once they arrive.
-onUpdated(updateScroll)
 
 function slotColor(s: (typeof printer.cfsSlots)[number]): string {
   const c = s.color
@@ -61,12 +48,10 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
       </div>
     </div>
 
-    <div v-if="hasSlots" class="relative -mx-7 lg:-mx-8">
+    <div v-if="hasSlots" class="-mx-7 lg:-mx-8">
       <div
-        ref="scrollEl"
-        class="grid gap-3 px-7 lg:px-8 max-sm:pb-3 overflow-x-auto"
+        class="grid gap-3 px-7 lg:px-8 max-sm:pb-3 overflow-x-auto scroll-fade-mobile"
         :style="{ gridTemplateColumns: `repeat(${Math.min(printer.cfsSlots.length, 5)}, minmax(120px, 1fr))` }"
-        @scroll="updateScroll"
       >
         <div
           v-for="s in printer.cfsSlots"
@@ -98,11 +83,6 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
           </span>
         </div>
       </div>
-      <div
-        class="max-sm:scroll-fade-right"
-        :class="{ 'is-faded': !canScrollRight }"
-        aria-hidden="true"
-      ></div>
     </div>
 
     <div v-else class="py-6 text-center text-[var(--text-mute)] text-[13px]">
