@@ -24,23 +24,25 @@ function slotColor(s: (typeof printer.cfsSlots)[number]): string {
 
 <template>
   <div class="card-panel">
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="t-title">Filaments</div>
-        <span v-if="printer.cfsName" class="text-[10px] font-medium text-[var(--text-mute)] uppercase tracking-wider">
-          {{ printer.cfsName }}
-        </span>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3 max-sm:w-full max-sm:justify-between">
+        <div class="flex items-center gap-3">
+          <div class="t-title">Filaments</div>
+          <span v-if="printer.cfsName" class="text-[10px] font-medium text-[var(--text-mute)] uppercase tracking-wider">
+            {{ printer.cfsName }}
+          </span>
+        </div>
+        <div v-if="printer.cfsHumidity !== null || printer.cfsTemp !== null" class="inline-flex items-stretch rounded-lg border border-[var(--border)] bg-[var(--bg-input)] overflow-hidden">
+          <span class="flex items-center px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-r border-[var(--border)] text-[var(--text-mute)]">CFS 1</span>
+          <span v-if="printer.cfsHumidity !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
+            💧 {{ printer.cfsHumidity }}%
+          </span>
+          <span v-if="printer.cfsTemp !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
+            🌡️ {{ printer.cfsTemp }}°C
+          </span>
+        </div>
       </div>
-      <div v-if="printer.cfsHumidity !== null || printer.cfsTemp !== null" class="inline-flex items-stretch rounded-lg border border-[var(--border)] bg-[var(--bg-input)] overflow-hidden">
-        <span class="flex items-center px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-r border-[var(--border)] text-[var(--text-mute)]">CFS 1</span>
-        <span v-if="printer.cfsHumidity !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
-          💧 {{ printer.cfsHumidity }}%
-        </span>
-        <span v-if="printer.cfsTemp !== null" class="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-dim)]">
-          🌡️ {{ printer.cfsTemp }}°C
-        </span>
-      </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
         <span v-if="hasSlots" class="status-dot w-2 h-2 bg-[var(--green)]"></span>
         <span class="text-[12px] font-medium" :class="hasSlots ? 'text-[var(--green)]' : 'text-[var(--text-mute)]'">
           {{ hasSlots ? loadedCount + ' LOADED' : 'NO FILAMENT' }}
