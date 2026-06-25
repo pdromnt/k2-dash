@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { usePrinterStore } from '@/stores/printer'
 import { usePrinterWs } from '@/composables/usePrinterWs'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, defineAsyncComponent } from 'vue'
 import { checkConnection } from '@/api/creality'
 import AppBanner from '@/components/layout/AppBanner.vue'
+const ConfigModal = defineAsyncComponent(() => import('@/components/config/ConfigModal.vue'))
 
 const printer = usePrinterStore()
 const printerHost = import.meta.env.VITE_PRINTER_HOST || ''
@@ -89,6 +90,7 @@ onMounted(async () => {
       </div>
 
       <div class="flex items-center gap-3">
+        <ConfigModal />
         <span
           v-if="isDev"
           class="text-[12px] font-mono text-[var(--text-mute)]"
