@@ -2,7 +2,8 @@
 
 K2Dash
 
-A real-time dashboard for the **Creality K2 Plus** 3D printer. Connects directly over your local network.
+A real-time dashboard for the **Creality K2 Plus** 3D printer.  
+Connects directly over your local network.
 
 <br clear="all"/>
 
