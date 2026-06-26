@@ -1,6 +1,10 @@
-# K2Dash
+<img src="public/creality.png" width="128" height="128" alt="Creality's Logo" align="left"/>
+
+K2Dash
 
 A real-time dashboard for the **Creality K2 Plus** 3D printer. Connects directly over your local network.
+
+<br clear="all"/>
 
 ## Features
 
