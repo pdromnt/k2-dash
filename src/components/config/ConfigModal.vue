@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive, h, nextTick, watch, onUnmounted, onMounted } from 'vue'
+import { ref, computed, reactive, h, defineComponent, nextTick, watch, onUnmounted, onMounted } from 'vue'
 import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile, restartKlipper } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
@@ -71,44 +71,50 @@ const UNSAVED_PROMPT = 'Discard unsaved changes?'
 // One row in the file tree. Extracted so sub-entry (indented) and
 // root-level (full-width) files share markup. The only difference is
 // the horizontal padding class, passed via `padClass`.
-const FileRow = (props: {
-  path: string
-  name: string
-  size: number | undefined
-  selected: boolean
-  padClass: string
-  openFile: (path: string) => void
-  deleteFile: (path: string) => void
-}) =>
-  h('div', {
-    class: ['flex items-center group', props.selected ? 'bg-[var(--green)]/10' : ''],
-  }, [
-    h('button', {
-      class: ['flex-1 text-left py-2 text-[13px] hover:bg-white/[0.02] transition-colors min-w-0', props.padClass],
-      onClick: () => props.openFile(props.path),
-    }, [
-      h('div', { class: 'flex items-center gap-2' }, [
-        h('span', { class: 'text-[13px] leading-none shrink-0' }, '📄'),
-        h('span', { class: 'truncate font-medium' }, props.name),
-      ]),
-      h('div', { class: 't-mono text-[10px] mt-0.5 ml-[25px]' }, fmtSize(props.size ?? 0)),
-    ]),
-    h('button', {
-      class: 'shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100',
-      onClick: () => props.deleteFile(props.path),
-      'aria-label': 'Delete',
-      title: 'Delete',
-    }, [
-      h('svg', {
-        class: 'w-3.5 h-3.5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', 'stroke-width': '1.5',
+const FileRow = defineComponent({
+  name: 'FileRow',
+  props: {
+    path: { type: String, required: true },
+    name: { type: String, required: true },
+    size: { type: Number, default: 0 },
+    selected: { type: Boolean, default: false },
+    padClass: { type: String, required: true },
+    openFile: { type: Function, required: true },
+    deleteFile: { type: Function, required: true },
+  },
+  setup(props) {
+    return () =>
+      h('div', {
+        class: ['flex items-center group', props.selected ? 'bg-[var(--green)]/10' : ''],
       }, [
-        h('path', {
-          'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-          d: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
-        }),
-      ]),
-    ]),
-  ])
+        h('button', {
+          class: ['flex-1 text-left py-2 text-[13px] hover:bg-white/[0.02] transition-colors min-w-0', props.padClass],
+          onClick: () => props.openFile(props.path),
+        }, [
+          h('div', { class: 'flex items-center gap-2' }, [
+            h('span', { class: 'text-[13px] leading-none shrink-0' }, '📄'),
+            h('span', { class: 'truncate font-medium' }, props.name),
+          ]),
+          h('div', { class: 't-mono text-[10px] mt-0.5 ml-[25px]' }, fmtSize(props.size)),
+        ]),
+        h('button', {
+          class: 'shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100',
+          onClick: () => props.deleteFile(props.path),
+          'aria-label': 'Delete',
+          title: 'Delete',
+        }, [
+          h('svg', {
+            class: 'w-3.5 h-3.5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', 'stroke-width': '1.5',
+          }, [
+            h('path', {
+              'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+              d: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
+            }),
+          ]),
+        ]),
+      ])
+  },
+})
 
 // Editing config and (more importantly) restarting Klipper mid-print is
 // a great way to ruin a job. Block both buttons whenever a print is
