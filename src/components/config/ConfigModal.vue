@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onUnmounted, onMounted } from 'vue'
-import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile } from '@/api/moonraker'
+import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile, restartKlipper } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
 import { errMsg, fmtSize } from '@/utils/format'
@@ -238,8 +238,27 @@ function cancel() {
 }
 
 async function save() {
+  await saveFile()
+}
+
+async function saveAndRestart() {
+  if (!selected.value) return
+  const ok = await saveFile()
+  if (!ok) return
+  // Klipper restart kicks the printer offline briefly. Warn the user,
+  // then issue the restart. We close the editor regardless — the WS will
+  // disconnect and reconnect once Klipper is back.
+  banner.show('Restarting Klipper — printer will be briefly offline')
+  try {
+    await restartKlipper()
+  } catch (e) {
+    banner.show('File saved, but Klipper restart failed', errMsg(e))
+  }
+}
+
+async function saveFile(): Promise<boolean> {
   const fp = selected.value || newFileName.value
-  if (!fp || !changed.value) return
+  if (!fp || !changed.value) return false
   saving.value = true
   try {
     const doc = editorView?.state.doc.toString() || ''
@@ -251,10 +270,13 @@ async function save() {
     newFileName.value = ''
     view.value = 'list'
     await loadFiles()
+    return true
   } catch (e) {
     banner.show('Failed to save config', errMsg(e))
+    return false
+  } finally {
+    saving.value = false
   }
-  saving.value = false
 }
 
 async function delFile(p: string) {
@@ -410,6 +432,13 @@ onUnmounted(() => {
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <button class="btn btn-sm" @click="cancel">Cancel</button>
+                <button
+                  v-if="selected"
+                  class="btn btn-sm"
+                  :disabled="!changed || saving"
+                  :title="`Save and restart Klipper so the changes take effect`"
+                  @click="saveAndRestart"
+                >Save + Restart</button>
                 <button
                   class="btn btn-primary btn-sm"
                   :disabled="!changed || saving || (!selected && !newFileName)"

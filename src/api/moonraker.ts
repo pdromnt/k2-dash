@@ -53,6 +53,15 @@ export async function sendGcode(script: string): Promise<string> {
   return api.post("/printer/gcode/script", { script });
 }
 
+/**
+ * Restart the Klipper host. Required after editing config files so the
+ * changes take effect. May not be available on every firmware — the
+ * K2 Plus's Creality fork supports it via the standard Moonraker path.
+ */
+export async function restartKlipper(): Promise<string> {
+  return api.post("/printer/restart");
+}
+
 export async function getFileList(root = "gcodes"): Promise<FileInfo[]> {
   const data = await api.get<{ result: FileInfo[] }>(
     `/server/files/list?root=${root}`,
