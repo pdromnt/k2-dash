@@ -183,11 +183,14 @@ html, body, #app {
 .jog-btn.jog-home:hover { background: rgba(139,175,52,0.2); }
 
 /* ── Status badge colors (replaces inline :style) ─────── */
+/* Job-state classes (printer.isPrinting/isPaused/etc.) */
 .state-printing { color: var(--green); }
 .state-paused   { color: var(--amber); }
 .state-complete { color: var(--blue); }
 .state-error    { color: var(--red); }
 .state-idle     { color: var(--text-mute); }
+/* Connection-state class (printer.connected, separate from job state) */
+.state-connected { color: var(--blue); }
 
 /* ── Banner error / reconnection strip ─────────────────── */
 .banner-error {

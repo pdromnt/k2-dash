@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive, nextTick, watch, onUnmounted, onMounted } from 'vue'
+import { ref, computed, reactive, h, nextTick, watch, onUnmounted, onMounted } from 'vue'
 import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile, restartKlipper } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
@@ -65,6 +65,50 @@ const klipperConfig = StreamLanguage.define({
 const banner = useBannerStore()
 const toast = useToastStore()
 const printer = usePrinterStore()
+
+const UNSAVED_PROMPT = 'Discard unsaved changes?'
+
+// One row in the file tree. Extracted so sub-entry (indented) and
+// root-level (full-width) files share markup. The only difference is
+// the horizontal padding class, passed via `padClass`.
+const FileRow = (props: {
+  path: string
+  name: string
+  size: number | undefined
+  selected: boolean
+  padClass: string
+  onOpen: (path: string) => void
+  onDelete: (path: string) => void
+}) =>
+  h('div', {
+    class: ['flex items-center group', props.selected ? 'bg-[var(--green)]/10' : ''],
+  }, [
+    h('button', {
+      class: ['flex-1 text-left py-2 text-[13px] hover:bg-white/[0.02] transition-colors min-w-0', props.padClass],
+      onClick: () => props.onOpen(props.path),
+    }, [
+      h('div', { class: 'flex items-center gap-2' }, [
+        h('span', { class: 'text-[13px] leading-none shrink-0' }, '📄'),
+        h('span', { class: 'truncate font-medium' }, props.name),
+      ]),
+      h('div', { class: 't-mono text-[10px] mt-0.5 ml-[25px]' }, fmtSize(props.size ?? 0)),
+    ]),
+    h('button', {
+      class: 'shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100',
+      onClick: () => props.onDelete(props.path),
+      'aria-label': 'Delete',
+      title: 'Delete',
+    }, [
+      h('svg', {
+        class: 'w-3.5 h-3.5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', 'stroke-width': '1.5',
+      }, [
+        h('path', {
+          'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+          d: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
+        }),
+      ]),
+    ]),
+  ])
 
 // Editing config and (more importantly) restarting Klipper mid-print is
 // a great way to ruin a job. Block both buttons whenever a print is
@@ -163,7 +207,7 @@ function toggle() {
 
 function close() {
   if (view.value === 'editor' && changed.value) {
-    if (!confirm('Discard unsaved changes?')) return
+    if (!confirm(UNSAVED_PROMPT)) return
   }
   show.value = false
 }
@@ -260,7 +304,7 @@ watch(view, async (v) => {
 // Back from the editor → list. Confirm if there are unsaved changes.
 function cancel() {
   if (changed.value) {
-    if (!confirm('Discard unsaved changes?')) return
+    if (!confirm(UNSAVED_PROMPT)) return
   }
   destroyEditor()
   selected.value = ''
@@ -391,55 +435,30 @@ onUnmounted(() => {
                       <span class="truncate">{{ entry.name }}</span>
                     </button>
                     <template v-if="!collapsed.has(entry.path)">
-                      <div v-for="sub in entry.children" :key="sub.path"
-                        class="flex items-center group"
-                        :class="selected === sub.path ? 'bg-[var(--green)]/10' : ''"
-                      >
-                        <button
-                          class="flex-1 text-left pl-12 pr-3 py-2 text-[13px] hover:bg-white/[0.02] transition-colors min-w-0"
-                          @click="openFile(sub.path)"
-                        >
-                          <div class="flex items-center gap-2">
-                            <span class="text-[13px] leading-none shrink-0">📄</span>
-                            <span class="truncate font-medium">{{ sub.name }}</span>
-                          </div>
-                          <div class="t-mono text-[10px] mt-0.5 ml-[25px]">{{ fmtSize(sub.size ?? 0) }}</div>
-                        </button>
-                        <button
-                          class="shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100"
-                          @click="delFile(sub.path)"
-                          aria-label="Delete"
-                          title="Delete"
-                        >
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
+                      <FileRow
+                        v-for="sub in entry.children"
+                        :key="sub.path"
+                        :path="sub.path"
+                        :name="sub.name"
+                        :size="sub.size"
+                        :selected="selected === sub.path"
+                        pad-class="pl-12 pr-3"
+                        :on-open="openFile"
+                        :on-delete="delFile"
+                      />
                     </template>
                   </template>
 
-                  <div v-else
-                    class="flex items-center group"
-                    :class="selected === entry.path ? 'bg-[var(--green)]/10' : ''"
-                  >
-                    <button
-                      class="flex-1 text-left px-5 py-2 text-[13px] hover:bg-white/[0.02] transition-colors min-w-0"
-                      @click="openFile(entry.path)"
-                    >
-                      <div class="flex items-center gap-2">
-                        <span class="text-[13px] leading-none shrink-0">📄</span>
-                        <span class="truncate font-medium">{{ entry.name }}</span>
-                      </div>
-                      <div class="t-mono text-[10px] mt-0.5 ml-[25px]">{{ fmtSize(entry.size ?? 0) }}</div>
-                    </button>
-                    <button
-                      class="shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100"
-                      @click="delFile(entry.path)"
-                      aria-label="Delete"
-                      title="Delete"
-                    >
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  </div>
+                  <FileRow
+                    v-else
+                    :path="entry.path"
+                    :name="entry.name"
+                    :size="entry.size"
+                    :selected="selected === entry.path"
+                    pad-class="px-5"
+                    :on-open="openFile"
+                    :on-delete="delFile"
+                  />
                 </template>
               </template>
             </div>

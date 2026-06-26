@@ -20,13 +20,16 @@ const OFFLINE_AFTER_MS = 15_000
 const RECONNECT_BANNER_AFTER_MS = 4_000
 const TICK_MS = 1_000
 
-const stateColor = computed(() => {
-  if (showOffline.value) return 'var(--text-mute)'
-  if (printer.isPrinting) return 'var(--green)'
-  if (printer.isPaused) return 'var(--amber)'
-  if (printer.isError) return 'var(--red)'
-  if (printer.connected) return 'var(--blue)'
-  return 'var(--text-mute)'
+// Dot + label color mirrors the same six-way state mapping the label
+// uses. Exposed as a state-* class name so the template can bind via
+// :class instead of an inline :style color.
+const stateClass = computed(() => {
+  if (showOffline.value) return 'state-idle'
+  if (printer.isPrinting) return 'state-printing'
+  if (printer.isPaused) return 'state-paused'
+  if (printer.isError) return 'state-error'
+  if (printer.connected) return 'state-connected'
+  return 'state-idle'
 })
 
 const stateLabel = computed(() => {
@@ -88,8 +91,8 @@ onMounted(async () => {
         </div>
         <div class="h-5 w-px bg-[var(--border-strong)]"></div>
         <div class="flex items-center gap-2.5">
-          <span class="status-dot w-2 h-2" :style="{ backgroundColor: stateColor }"></span>
-          <span class="text-[13px] font-medium" :style="{ color: stateColor }">{{ stateLabel }}</span>
+          <span class="status-dot w-2 h-2" :class="stateClass"></span>
+          <span class="text-[13px] font-medium" :class="stateClass">{{ stateLabel }}</span>
         </div>
       </div>
 
