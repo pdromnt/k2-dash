@@ -18,11 +18,23 @@ export interface CfsSlot {
   isSpool: boolean
 }
 
+/**
+ * Shape of an entry in the K2 Plus `elapseVideoList` WS payload
+ * (returned by `{method:'get', params:{reqElapseVideoList:1}}`).
+ *
+ * - `name`  : full path including the `gcodes/` prefix
+ * - `video` : bare filename used by the printer's
+ *             `/downloads/video/<video>` HTTP endpoint and by
+ *             `ctrlVideoFiles.file` in the delete WS message
+ * - `videoname`, `starttime`, `duration` are display-only metadata.
+ */
 export interface TimelapseFile {
   name: string
-  path: string
+  video: string
   size: number
-  time: number
+  starttime: number
+  duration: number
+  videoname?: string
 }
 
 // Klipper `output_pin fan{N}` → store field for fans that accept a 0-1 value.

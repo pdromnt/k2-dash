@@ -107,10 +107,10 @@ function showTip(btn: HTMLButtonElement | undefined, text: string) {
   tip.visible = true
 }
 function hideTip() { tip.visible = false }
-const showSaveTip = () => showTip(saveBtn.value, "Can't save while printing")
-const hideSaveTip = hideTip
-const showRestartTip = () => showTip(restartBtn.value, "Can't restart while printing")
-const hideRestartTip = hideTip
+const SAVE_TIP = "Can't save while printing"
+const RESTART_TIP = "Can't restart while printing"
+const showSaveTip = () => showTip(saveBtn.value, SAVE_TIP)
+const showRestartTip = () => showTip(restartBtn.value, RESTART_TIP)
 
 interface TreeEntry {
   name: string
@@ -471,7 +471,7 @@ onUnmounted(() => {
                   class="btn btn-sm"
                   :disabled="!changed || saving || jobActive"
                   @mouseenter="showRestartTip"
-                  @mouseleave="hideRestartTip"
+                  @mouseleave="hideTip"
                   @click="saveAndRestart"
                 >Save + Restart</button>
                 <button
@@ -479,7 +479,7 @@ onUnmounted(() => {
                   class="btn btn-primary btn-sm"
                   :disabled="!changed || saving || (!selected && !newFileName) || jobActive"
                   @mouseenter="showSaveTip"
-                  @mouseleave="hideSaveTip"
+                  @mouseleave="hideTip"
                   @click="save"
                 >{{ saving ? 'Saving…' : 'Save' }}</button>
               </div>

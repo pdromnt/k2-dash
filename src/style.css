@@ -120,7 +120,6 @@ html, body, #app {
   text-align: center;
   color: var(--text-mute);
 }
-.empty-state .empty-message { font-size: 13px; color: var(--text-mute); }
 
 /* ── List row primitives ───────────────────────────────── */
 .row-title {
@@ -187,8 +186,7 @@ html, body, #app {
 .state-printing { color: var(--green); }
 .state-paused   { color: var(--amber); }
 .state-complete { color: var(--blue); }
-.state-error,
-.state-cancelled { color: var(--red); }
+.state-error    { color: var(--red); }
 .state-idle     { color: var(--text-mute); }
 
 /* ── Banner error / reconnection strip ─────────────────── */
@@ -217,9 +215,8 @@ html, body, #app {
   }
 }
 
-/* ── Status dot ────────────────────────────────────────── */
+/* ── Pulse keyframes (used by .status-dot.dot-pulse above) ─ */
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-.dot-pulse { animation: pulse 2s ease-in-out infinite; }
 
 /* ── Spinner ──────────────────────────────────────────────── */
 .spinner {

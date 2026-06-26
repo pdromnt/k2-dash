@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useConsole } from '@/composables/useConsole'
+import { usePrinterStore } from '@/stores/printer'
 
 const { messages, connected, connect, sendCommand, clear } = useConsole()
+const printer = usePrinterStore()
+
+// Informational only — Fluidd/Mainsail keep the console enabled
+// during prints because Klipper is explicitly designed to accept
+// injected G-code mid-print (pause/resume, filament runout response,
+// etc.). We surface the state as awareness, not a hard block.
+const jobActive = computed(() => printer.isPrinting || printer.isPaused)
 
 const input = ref('')
 const history = ref<string[]>([])
@@ -42,10 +50,17 @@ onMounted(() => { if (import.meta.env.VITE_PRINTER_HOST) connect() })
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="t-title">Console</div>
-        <div class="flex items-center gap-2">
-          <span class="status-dot" :class="connected ? 'bg-[var(--green)]' : 'bg-[var(--text-mute)]'"></span>
-          <span class="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-mute)]">
-            {{ connected ? 'Live' : 'HTTP' }}
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span class="status-dot" :class="connected ? 'bg-[var(--green)]' : 'bg-[var(--text-mute)]'"></span>
+            <span class="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-mute)]">
+              {{ connected ? 'Live' : 'HTTP' }}
+            </span>
+          </div>
+          <span v-if="jobActive"
+            class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded"
+            :class="printer.isPrinting ? 'bg-[var(--green)]/15 text-[var(--green)]' : 'bg-[var(--amber)]/15 text-[var(--amber)]'">
+            {{ printer.isPrinting ? 'Printing' : 'Paused' }}
           </span>
         </div>
       </div>

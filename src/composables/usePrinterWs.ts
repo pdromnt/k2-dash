@@ -66,6 +66,7 @@ function parseAndDispatch(msg: Record<string, unknown>) {
   }
   if (msg.boxsInfo) parseBoxsInfo(msg.boxsInfo as Record<string, unknown>)
   if (msg.retGcodeFileInfo2) parseFileList(msg.retGcodeFileInfo2)
+  if (msg.elapseVideoList) parseTimelapseList(msg.elapseVideoList)
   for (const sub of subscribers) sub(msg)
 }
 
@@ -249,26 +250,34 @@ function parseBoxsInfo(info: Record<string, unknown>) {
 }
 
 function parseFileList(info: unknown) {
-  const store = usePrinterStore()
   const files = Array.isArray(info) ? info as Array<Record<string, unknown>> : undefined
   if (!files?.length) return
 
   fileList.value = files
   matchEstimatedData(files)
+}
 
-  const timelapseFiles: TimelapseFile[] = []
-  for (const f of files) {
+function parseTimelapseList(info: unknown) {
+  const store = usePrinterStore()
+  const list = Array.isArray(info) ? info as Array<Record<string, unknown>> : undefined
+  if (!list) return
+  const files: TimelapseFile[] = []
+  for (const f of list) {
     const name = typeof f.name === 'string' ? f.name : ''
-    if (name.includes('timelapse') || name.endsWith('.mp4') || name.endsWith('.avi')) {
-      timelapseFiles.push({
-        name,
-        path: typeof f.path === 'string' ? f.path : name,
-        size: typeof f.size === 'number' ? f.size : 0,
-        time: typeof f.time === 'number' ? f.time : 0,
-      })
-    }
+    const video = typeof f.video === 'string' && f.video
+      ? f.video
+      : name.split('/').pop() || name
+    if (!video) continue
+    files.push({
+      name,
+      video,
+      size: typeof f.size === 'number' ? f.size : 0,
+      starttime: typeof f.starttime === 'number' ? f.starttime : 0,
+      duration: typeof f.duration === 'number' ? f.duration : 0,
+      videoname: typeof f.videoname === 'string' ? f.videoname : undefined,
+    })
   }
-  if (timelapseFiles.length > 0) store.timelapseFiles = timelapseFiles
+  store.timelapseFiles = files
 }
 
 function matchEstimatedData(files: Array<Record<string, unknown>>) {
@@ -296,7 +305,16 @@ export function usePrinterWs() {
     if (name && fileList.value.length) matchEstimatedData(fileList.value)
   })
 
-  return { connected, connect, onMessage }
+  // Manual refresh of the timelapse list. The printer doesn't push
+  // timelapse changes over the WS (CrealityPrint triggers this from
+  // the UI on demand), so we only fetch on user action.
+  function refreshTimelapses() {
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ method: 'get', params: { reqElapseVideoList: 1 } }))
+    }
+  }
+
+  return { connected, connect, onMessage, refreshTimelapses }
 }
 
 /**
