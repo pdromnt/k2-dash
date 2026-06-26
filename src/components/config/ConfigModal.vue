@@ -77,15 +77,15 @@ const FileRow = (props: {
   size: number | undefined
   selected: boolean
   padClass: string
-  onOpen: (path: string) => void
-  onDelete: (path: string) => void
+  openFile: (path: string) => void
+  deleteFile: (path: string) => void
 }) =>
   h('div', {
     class: ['flex items-center group', props.selected ? 'bg-[var(--green)]/10' : ''],
   }, [
     h('button', {
       class: ['flex-1 text-left py-2 text-[13px] hover:bg-white/[0.02] transition-colors min-w-0', props.padClass],
-      onClick: () => props.onOpen(props.path),
+      onClick: () => props.openFile(props.path),
     }, [
       h('div', { class: 'flex items-center gap-2' }, [
         h('span', { class: 'text-[13px] leading-none shrink-0' }, '📄'),
@@ -95,7 +95,7 @@ const FileRow = (props: {
     ]),
     h('button', {
       class: 'shrink-0 px-2 py-2.5 text-[var(--text-mute)] hover:text-[var(--red)] transition-colors opacity-0 group-hover:opacity-100',
-      onClick: () => props.onDelete(props.path),
+      onClick: () => props.deleteFile(props.path),
       'aria-label': 'Delete',
       title: 'Delete',
     }, [
@@ -443,8 +443,8 @@ onUnmounted(() => {
                         :size="sub.size"
                         :selected="selected === sub.path"
                         pad-class="pl-12 pr-3"
-                        :on-open="openFile"
-                        :on-delete="delFile"
+                        :open-file="openFile"
+                        :delete-file="delFile"
                       />
                     </template>
                   </template>
@@ -456,8 +456,8 @@ onUnmounted(() => {
                     :size="entry.size"
                     :selected="selected === entry.path"
                     pad-class="px-5"
-                    :on-open="openFile"
-                    :on-delete="delFile"
+                    :open-file="openFile"
+                    :delete-file="delFile"
                   />
                 </template>
               </template>
