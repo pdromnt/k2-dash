@@ -2,6 +2,7 @@ import { ref, watch } from 'vue'
 import { usePrinterStore } from '@/stores/printer'
 import type { CfsSlot, TimelapseFile, PrinterState } from '@/stores/printer'
 import { getWsUrl } from '@/utils/env'
+import { normalizeGcodePath } from '@/utils/format'
 
 type WsSubscriber = (msg: Record<string, unknown>) => void
 
@@ -163,7 +164,7 @@ function parseStatus(msg: Record<string, unknown>) {
 
   const pp = n(msg.printProgress)
   if (pp !== undefined) store.printProgress = pp <= 1 ? Math.round(pp * 100) : Math.round(pp)
-  if (typeof msg.printFileName === 'string') store.printFilename = msg.printFileName
+  if (typeof msg.printFileName === 'string') store.printFilename = normalizeGcodePath(msg.printFileName)
   const pjt = n(msg.printJobTime); if (pjt !== undefined) store.printDuration = pjt
   const plt = n(msg.printLeftTime); if (plt !== undefined) store.printLeftTime = plt
   const l = n(msg.layer); if (l !== undefined) store.currentLayer = Math.round(l / LAYER_DIVIDER)

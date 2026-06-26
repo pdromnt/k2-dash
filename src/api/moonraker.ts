@@ -94,57 +94,6 @@ export async function getHistoryList(): Promise<HistoryList> {
   return data.result;
 }
 
-// Metadata is cached by Moonraker after the first scan and returns thumbnail
-// info (paths to pre-rendered PNGs under .thumbs/) plus slicer stats. Avoids
-// downloading the full gcode just to extract a thumbnail from the header.
-export interface GcodeMetadata {
-  size: number
-  modified: number
-  slicer?: string
-  slicer_version?: string
-  layer_height?: number
-  first_layer_height?: number
-  object_height?: number
-  estimated_time?: number
-  filament_name?: string
-  filament_type?: string
-  filament_total?: number
-  filament_weight_total?: number
-  thumbnails?: Array<{ width: number; height: number; size: number; relative_path: string }>
-  [k: string]: unknown
-}
-
-export async function getGcodeMetadata(filename: string): Promise<GcodeMetadata | null> {
-  try {
-    const data = await api.get<{ result: GcodeMetadata | null }>(
-      `/server/files/metadata?filename=${encodeURIComponent(filename)}`,
-    )
-    return data.result
-  } catch {
-    return null
-  }
-}
-
-// Returns absolute (filesystem-relative to the gcodes root) paths to the
-// thumbnail PNGs Moonraker has already rendered for a given gcode file.
-export interface ThumbnailInfo {
-  width: number
-  height: number
-  size: number
-  thumbnail_path: string
-}
-
-export async function getGcodeThumbnails(filename: string): Promise<ThumbnailInfo[] | null> {
-  try {
-    const data = await api.get<{ result: ThumbnailInfo[] | null }>(
-      `/server/files/thumbnails?filename=${encodeURIComponent(filename)}`,
-    )
-    return data.result
-  } catch {
-    return null
-  }
-}
-
 export async function getConfigFiles(): Promise<FileInfo[]> {
   return getFileList('config')
 }

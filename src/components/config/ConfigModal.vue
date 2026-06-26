@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, watch, onUnmounted, onMounted } from 'vue'
+import { ref, computed, reactive, nextTick, watch, onUnmounted, onMounted } from 'vue'
 import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile, restartKlipper } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
@@ -86,6 +86,31 @@ const collapsed = ref<Set<string>>(new Set())
 
 const editorHost = ref<HTMLDivElement>()
 let editorView: EditorView | null = null
+
+// Tooltip refs — teleported to body so they escape the modal's
+// overflow:hidden and stacking context. Positioned from the trigger
+// button's bounding rect on hover.
+const saveBtn = ref<HTMLButtonElement>()
+const restartBtn = ref<HTMLButtonElement>()
+const tip = reactive<{ text: string; visible: boolean; x: number; y: number }>({
+  text: '',
+  visible: false,
+  x: 0,
+  y: 0,
+})
+function showTip(btn: HTMLButtonElement | undefined, text: string) {
+  if (!btn || !text) return
+  const r = btn.getBoundingClientRect()
+  tip.text = text
+  tip.x = r.left + r.width / 2
+  tip.y = r.bottom + 8
+  tip.visible = true
+}
+function hideTip() { tip.visible = false }
+const showSaveTip = () => showTip(saveBtn.value, "Can't save while printing")
+const hideSaveTip = hideTip
+const showRestartTip = () => showTip(restartBtn.value, "Can't restart while printing")
+const hideRestartTip = hideTip
 
 interface TreeEntry {
   name: string
@@ -440,30 +465,23 @@ onUnmounted(() => {
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <button class="btn btn-sm" @click="cancel">Cancel</button>
-                <div v-if="selected" class="relative group">
-                  <button
-                    class="btn btn-sm"
-                    :disabled="!changed || saving || jobActive"
-                    @click="saveAndRestart"
-                  >Save + Restart</button>
-                  <div
-                    v-if="jobActive && !saving"
-                    class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 rounded-lg term-panel text-[12px] font-medium leading-snug whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50"
-                    role="tooltip"
-                  >Can't restart while printing</div>
-                </div>
-                <div class="relative group">
-                  <button
-                    class="btn btn-primary btn-sm"
-                    :disabled="!changed || saving || (!selected && !newFileName) || jobActive"
-                    @click="save"
-                  >{{ saving ? 'Saving…' : 'Save' }}</button>
-                  <div
-                    v-if="jobActive && !saving"
-                    class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 rounded-lg term-panel text-[12px] font-medium leading-snug whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50"
-                    role="tooltip"
-                  >Can't save while printing</div>
-                </div>
+                <button
+                  v-if="selected"
+                  ref="restartBtn"
+                  class="btn btn-sm"
+                  :disabled="!changed || saving || jobActive"
+                  @mouseenter="showRestartTip"
+                  @mouseleave="hideRestartTip"
+                  @click="saveAndRestart"
+                >Save + Restart</button>
+                <button
+                  ref="saveBtn"
+                  class="btn btn-primary btn-sm"
+                  :disabled="!changed || saving || (!selected && !newFileName) || jobActive"
+                  @mouseenter="showSaveTip"
+                  @mouseleave="hideSaveTip"
+                  @click="save"
+                >{{ saving ? 'Saving…' : 'Save' }}</button>
               </div>
             </div>
 
@@ -471,6 +489,20 @@ onUnmounted(() => {
           </div>
         </Transition>
       </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Tooltips: teleported to body to escape the modal's overflow:hidden
+       and stacking context. Positioned by getBoundingClientRect of the
+       trigger button so they always sit just below it. -->
+  <Teleport to="body">
+    <Transition name="tip">
+      <div
+        v-if="tip.visible && tip.text"
+        class="fixed z-[100] px-3 py-1.5 rounded-lg term-panel text-[12px] font-medium leading-snug whitespace-nowrap shadow-xl pointer-events-none"
+        :style="{ top: `${tip.y}px`, left: `${tip.x}px`, transform: 'translateX(-50%)' }"
+        role="tooltip"
+      >{{ tip.text }}</div>
     </Transition>
   </Teleport>
 </template>
@@ -509,6 +541,14 @@ onUnmounted(() => {
 }
 .view-enter-from {
   transform: translateX(24px);
+  opacity: 0;
+}
+
+/* Tip: subtle fade so the tooltip doesn't pop in. */
+.tip-enter-active, .tip-leave-active {
+  transition: opacity 0.12s ease;
+}
+.tip-enter-from, .tip-leave-to {
   opacity: 0;
 }
 </style>

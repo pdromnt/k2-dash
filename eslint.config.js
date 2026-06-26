@@ -23,6 +23,7 @@ export default tseslint.config(
         WebSocket: 'readonly',
         HTMLDivElement: 'readonly',
         HTMLInputElement: 'readonly',
+        HTMLButtonElement: 'readonly',
         HTMLTextAreaElement: 'readonly',
         HTMLElement: 'readonly',
         KeyboardEvent: 'readonly',

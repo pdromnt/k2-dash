@@ -18,6 +18,19 @@ export function splitPath(p: string) {
   return p.split('/').pop() || p
 }
 
+/**
+ * Normalize a gcode filename to its path relative to the gcodes root.
+ * The Creality K2 Plus WebSocket sometimes sends the absolute filesystem
+ * path (/mnt/UDISK/printer_data/gcodes/foo.gcode) while the HTTP API
+ * returns just foo.gcode. Strip everything up to and including /gcodes/
+ * so both sources agree and downstream lookups (metadata, thumbnails)
+ * don't 404 on the absolute path.
+ */
+export function normalizeGcodePath(raw: string): string {
+  const idx = raw.lastIndexOf('/gcodes/')
+  return idx >= 0 ? raw.slice(idx + '/gcodes/'.length) : raw
+}
+
 /** Convert filament length stored in mm to a human-readable meters string. */
 export function fmtFilamentMeters(mm: number) {
   return `${(mm / 1000).toFixed(1)}m`

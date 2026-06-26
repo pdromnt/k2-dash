@@ -1,7 +1,7 @@
 import { onMounted, onUnmounted, watch } from "vue";
 import { usePrinterStore } from "@/stores/printer";
-import { queryPrinterObjects, getGcodeThumbnails } from "@/api/moonraker";
-import { getMoonrakerBaseUrl } from "@/utils/env";
+import { queryPrinterObjects } from "@/api/moonraker";
+import { HOST } from "@/utils/env";
 
 const FULL_QUERY = {
   print_stats: null,
@@ -19,8 +19,12 @@ const FULL_QUERY = {
 
 const POLL_INTERVAL_MS = 2000
 const MIN_POLL_GAP_MS = 800
-const THUMBNAIL_TIMEOUT_MS = 5000
-const THUMBNAIL_RANGE_BYTES = 80000 // Fallback only — used if Moonraker hasn't scanned the file
+
+// K2 Plus firmware serves the current print preview at
+// http://<ip>:80/downloads/original/current_print_image.png (same URL
+// CrealityPrint uses). Bypasses the gcode header parse entirely —
+// the printer keeps the file updated as the print progresses.
+const THUMBNAIL_URL = `http://${HOST}:80/downloads/original/current_print_image.png`
 
 export function usePrinter() {
   const store = usePrinterStore();
@@ -42,54 +46,6 @@ export function usePrinter() {
     }
   }
 
-  /**
-   * Fetch the thumbnail for a gcode file. Prefers Moonraker's stored
-   * thumbnails (rendered and cached by the server on upload/scan) so we
-   * download a ~30-100KB PNG instead of streaming the start of the full
-   * gcode. Falls back to parsing the gcode header if metadata isn't
-   * available yet (file never scanned).
-   */
-  let lastFetchedFilename = ''
-  async function fetchThumbnail(filename: string) {
-    if (filename === lastFetchedFilename && store.thumbnailUrl) return
-    lastFetchedFilename = filename
-    // Revoke any previous object-URL thumbnail to avoid leaks
-    if (store.thumbnailUrl?.startsWith('blob:')) {
-      URL.revokeObjectURL(store.thumbnailUrl)
-      store.thumbnailUrl = ''
-    }
-    try {
-      const thumbs = await getGcodeThumbnails(filename)
-      if (thumbs && thumbs.length > 0) {
-        // Prefer the largest thumbnail Moonraker has cached
-        const best = thumbs.reduce((a, b) => (a.size >= b.size ? a : b))
-        const url = `${getMoonrakerBaseUrl()}/server/files/gcodes/${encodeURIComponent(best.thumbnail_path)}`
-        const resp = await fetch(url, { signal: AbortSignal.timeout(THUMBNAIL_TIMEOUT_MS) })
-        if (resp.ok) {
-          const blob = await resp.blob()
-          store.thumbnailUrl = URL.createObjectURL(blob)
-          return
-        }
-      }
-      // Fallback: Range-fetch the first chunk of the gcode and parse the
-      // embedded base64 thumbnail from the header. Avoids downloading the
-      // whole file even in the worst case.
-      const resp = await fetch(`${getMoonrakerBaseUrl()}/server/files/gcodes/${encodeURIComponent(filename)}`, {
-        headers: { Range: `bytes=0-${THUMBNAIL_RANGE_BYTES}` },
-        signal: AbortSignal.timeout(THUMBNAIL_TIMEOUT_MS),
-      })
-      const text = await resp.text()
-      // Parse thumbnail block: ; thumbnail begin WxH SIZE\n; base64data...
-      const m = text.match(/thumbnail begin (\d+)x(\d+) (\d+)\n(?:; )?((?:[A-Za-z0-9+/=\n\r; ]+?))?\n(?:; )?thumbnail end/)
-      if (m) {
-        const b64 = m[4].replace(/[;\s\r\n]/g, '')
-        if (b64.length > 100) {
-          store.thumbnailUrl = `data:image/png;base64,${b64}`
-        }
-      }
-    } catch { /* ignore */ }
-  }
-
   function startPolling() {
     stopPolling();
     pollTimer = setInterval(pollStatus, POLL_INTERVAL_MS);
@@ -102,13 +58,32 @@ export function usePrinter() {
     }
   }
 
+  // The firmware serves the current print preview at a fixed URL and
+  // updates the PNG in place as the print progresses. No polling
+  // needed — the browser cache is fine. The filename is appended as a
+  // cache-buster so a new print forces a fetch (otherwise a hot-reload
+  // mid-print would show a stale image from the previous run).
+  function startThumbnail() {
+    store.thumbnailUrl = `${THUMBNAIL_URL}?cb=${encodeURIComponent(store.printFilename)}`
+  }
+  function stopThumbnail() {
+    store.thumbnailUrl = ''
+  }
+
   onMounted(() => {
     if (import.meta.env.VITE_PRINTER_HOST) {
       startPolling()
+      // Resume the thumbnail stream if a job is already running (the
+      // printFilename watcher only fires on changes, so an active job
+      // present at mount time would otherwise never kick off).
+      if (store.printFilename) startThumbnail()
     }
   });
 
-  onUnmounted(() => stopPolling());
+  onUnmounted(() => {
+    stopPolling()
+    stopThumbnail()
+  });
 
   // Stop Moonraker poll when WS is active (WS provides all data incl. layers/3)
   watch(() => store.wsActive, (active) => {
@@ -120,8 +95,14 @@ export function usePrinter() {
     if (s === 'printing' || s === 'preparing') pollStatus()
   })
 
-  // Fetch thumbnail from G-code header when filename changes
+  // Refresh the thumbnail stream while a job is active. The URL is
+  // stable per filename so we can reuse the same <img> tag without
+  // flicker — only the query param changes to bust the cache.
+  // immediate: true so an already-running job on first mount kicks
+  // off the stream (otherwise the watcher only fires on changes and
+  // would miss it).
   watch(() => store.printFilename, (filename) => {
-    if (filename) fetchThumbnail(filename)
-  })
+    if (filename) startThumbnail()
+    else stopThumbnail()
+  }, { immediate: true })
 }
