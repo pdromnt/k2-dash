@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, nextTick, watch, onUnmounted, onMounted } from 'vue'
+import { ref, computed, nextTick, watch, onUnmounted, onMounted } from 'vue'
 import { getConfigFiles, getConfigFile, saveConfigFile, deleteConfigFile, restartKlipper } from '@/api/moonraker'
 import { useBannerStore } from '@/stores/banner'
 import { useToastStore } from '@/stores/toast'
+import { usePrinterStore } from '@/stores/printer'
 import { errMsg, fmtSize } from '@/utils/format'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
@@ -63,6 +64,12 @@ const klipperConfig = StreamLanguage.define({
 
 const banner = useBannerStore()
 const toast = useToastStore()
+const printer = usePrinterStore()
+
+// Editing config and (more importantly) restarting Klipper mid-print is
+// a great way to ruin a job. Block both buttons whenever a print is
+// active (printing, preparing, or paused).
+const jobActive = computed(() => printer.isPrinting || printer.isPaused)
 
 const show = ref(false)
 // Two distinct views inside the modal: the file list, and the editor for
@@ -238,11 +245,12 @@ function cancel() {
 }
 
 async function save() {
+  if (jobActive.value) return
   await saveFile()
 }
 
 async function saveAndRestart() {
-  if (!selected.value) return
+  if (!selected.value || jobActive.value) return
   const ok = await saveFile()
   if (!ok) return
   // Klipper restart kicks the printer offline briefly. Warn the user,
@@ -432,18 +440,30 @@ onUnmounted(() => {
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <button class="btn btn-sm" @click="cancel">Cancel</button>
-                <button
-                  v-if="selected"
-                  class="btn btn-sm"
-                  :disabled="!changed || saving"
-                  :title="`Save and restart Klipper so the changes take effect`"
-                  @click="saveAndRestart"
-                >Save + Restart</button>
-                <button
-                  class="btn btn-primary btn-sm"
-                  :disabled="!changed || saving || (!selected && !newFileName)"
-                  @click="save"
-                >{{ saving ? 'Saving…' : 'Save' }}</button>
+                <div v-if="selected" class="relative group">
+                  <button
+                    class="btn btn-sm"
+                    :disabled="!changed || saving || jobActive"
+                    @click="saveAndRestart"
+                  >Save + Restart</button>
+                  <div
+                    v-if="jobActive && !saving"
+                    class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 rounded-lg term-panel text-[12px] font-medium leading-snug whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50"
+                    role="tooltip"
+                  >Can't restart while printing</div>
+                </div>
+                <div class="relative group">
+                  <button
+                    class="btn btn-primary btn-sm"
+                    :disabled="!changed || saving || (!selected && !newFileName) || jobActive"
+                    @click="save"
+                  >{{ saving ? 'Saving…' : 'Save' }}</button>
+                  <div
+                    v-if="jobActive && !saving"
+                    class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 rounded-lg term-panel text-[12px] font-medium leading-snug whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50"
+                    role="tooltip"
+                  >Can't save while printing</div>
+                </div>
               </div>
             </div>
 
