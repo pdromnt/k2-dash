@@ -91,7 +91,7 @@ onMounted(async () => {
         </div>
         <div class="h-5 w-px bg-[var(--border-strong)]"></div>
         <div class="flex items-center gap-2.5">
-          <span class="status-dot w-2 h-2" :class="stateClass"></span>
+          <span class="status-dot w-2 h-2 bg-current" :class="stateClass"></span>
           <span class="text-[13px] font-medium" :class="stateClass">{{ stateLabel }}</span>
         </div>
       </div>

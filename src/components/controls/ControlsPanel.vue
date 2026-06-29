@@ -17,6 +17,28 @@ watch(() => [printer.fanPart, printer.fanAux, printer.fanChamber], ([p, a, c]) =
   fanSliders.value = [p, a, c]
 })
 
+/**
+ * Send a G-code script through whichever transport the K2 Plus actually
+ * speaks. The console already proved port 9999 accepts
+ * `{method:'set', params:{gcodeCmd:...}}` and the printer responds via
+ * `gcodeRes`. We re-use that same channel here so all panel controls
+ * work the same way.
+ *
+ * Moonraker's HTTP `POST /printer/gcode/script` 500s on the K2 Plus
+ * because its Creality firmware doesn't expose that endpoint, so the
+ * old `sendGcode(...)` path is deliberately bypassed.
+ */
+function wsGcode(script: string, label?: string) {
+  if (!import.meta.env.VITE_PRINTER_HOST) return
+  const ws = window.__printerWs
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    banner.show('Printer WebSocket not connected')
+    return
+  }
+  ws.send(JSON.stringify({ method: 'set', params: { gcodeCmd: script } }))
+  toast.show(label ? `${label} · OK` : `OK · ${script.split('\n')[0]}`)
+}
+
 async function cmd(script: string, label?: string) {
   if (!import.meta.env.VITE_PRINTER_HOST) return
   try {
@@ -27,23 +49,40 @@ async function cmd(script: string, label?: string) {
   }
 }
 
+function allOff() {
+  // Three separate heater zero-targets through the K2 Plus WS. Mirror
+  // the per-heater `setTemp` channel rather than batching gcodeCmd
+  // lines because the firmware may not interpret a multi-line script
+  // targeted at the right heater.
+  wsGcode('M104 S0', 'Extruder off')
+  wsGcode('M140 S0', 'Bed off')
+  wsGcode('M141 S0', 'Chamber off')
+}
+
 async function setTemp(heater: string, temp: string) {
   const t = parseFloat(temp)
   if (isNaN(t)) return
 
-  // Chamber uses Creality WS direct command (not Klipper G-code)
+  // M-codes via the K2 Plus WS work (the console uses the same
+  // channel). Klipper's `SET_HEATER_TEMPERATURE` and the K1's
+  // `boxTempControl` param both 500 / fail on the K2 Plus firmware,
+  // so the universal fallback is the M-code path.
   if (heater === 'heater_generic chamber_heater') {
-    const sock = window.__printerWs
-    if (sock?.readyState === WebSocket.OPEN) {
-      sock.send(JSON.stringify({ method: 'set', params: { boxTempControl: t } }))
-      toast.show(`Chamber target \u00b7 ${t}\u00b0C`)
-    } else {
-      banner.show('Printer WebSocket not connected')
+    // M141 sets the chamber target in Klipper. If the K2 Plus firmware
+    // speaks Klipper-ish this works; if not, it will no-op silently.
+    wsGcode(`M141 S${t}`, `Chamber target \u00b7 ${t}\u00b0C`)
+    // Belt-and-suspenders: also try the K1 WS key in case the firmware
+    // happens to accept it (it has on some Creality forks).
+    const ws = window.__printerWs
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ method: 'set', params: { boxTempControl: t } }))
     }
     return
   }
 
-  await cmd(`SET_HEATER_TEMPERATURE HEATER="${heater}" TARGET=${t}`)
+  // M104 = extruder, M140 = bed. Both work via `gcodeCmd`.
+  const mcode = heater === 'heater_bed' ? `M140 S${t}` : `M104 S${t}`
+  wsGcode(mcode, `${heater === 'heater_bed' ? 'Bed' : 'Extruder'} target \u00b7 ${t}\u00b0C`)
 }
 
 async function setFan(pin: number, pct: number) {
@@ -174,7 +213,7 @@ function jogGradient(value: number) {
       <div>
         <div class="flex items-center justify-between mb-5">
           <div class="t-title">Temperature</div>
-          <button class="btn btn-warn btn-sm" @click="cmd('M104 S0\nM140 S0')">All off</button>
+          <button class="btn btn-warn btn-sm" @click="allOff()">All off</button>
         </div>
         <div class="space-y-5">
           <div v-for="h in heaters" :key="h.label" class="flex items-center gap-4">
