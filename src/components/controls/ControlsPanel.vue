@@ -68,15 +68,9 @@ async function setTemp(heater: string, temp: string) {
   // `boxTempControl` param both 500 / fail on the K2 Plus firmware,
   // so the universal fallback is the M-code path.
   if (heater === 'heater_generic chamber_heater') {
-    // M141 sets the chamber target in Klipper. If the K2 Plus firmware
-    // speaks Klipper-ish this works; if not, it will no-op silently.
+    // M141 sets the chamber target. K2 Plus firmware runs Klipper
+    // underneath so this should work; if not it no-ops silently.
     wsGcode(`M141 S${t}`, `Chamber target \u00b7 ${t}\u00b0C`)
-    // Belt-and-suspenders: also try the K1 WS key in case the firmware
-    // happens to accept it (it has on some Creality forks).
-    const ws = window.__printerWs
-    if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ method: 'set', params: { boxTempControl: t } }))
-    }
     return
   }
 
